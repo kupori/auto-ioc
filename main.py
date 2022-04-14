@@ -71,29 +71,28 @@ def extract_data(xd):
             first_column = df.iloc[:, 0].tolist()
             holding_list_address.extend(first_column)
 
-    holding_list_count_hash = len(holding_list_hash)
-    holding_list_count_address = len(holding_list_address)
+    holding_list_hash_count = len(holding_list_hash)
+    holding_list_address_count = len(holding_list_address)
 
-    if holding_list_count_hash > 0:
-        print ("Extracted {} potential hashes from Sheets {} " .format(holding_list_count_hash, sheet_name_hashes))
-    if holding_list_count_address > 0:
-        print ("Extracted {} potential ip/url from Sheets {} " .format(holding_list_count_address, sheet_name_address))
+    if holding_list_hash_count > 0:
+        print ("Extracted {} potential hashes from Sheets {} " .format(holding_list_hash_count, sheet_name_hashes))
+    if holding_list_address_count > 0:
+        print ("Extracted {} potential ip/url from Sheets {} " .format(holding_list_address_count, sheet_name_address))
     if len(sheet_name_unknown) > 0:
         print ("No data extracted from Sheet {} " .format(sheet_name_unknown))
-    return [holding_list_count_hash, holding_list_address]
+    return [holding_list_hash_count, holding_list_address_count]
 
-def process_hash(xd):
-    if (xd[0]) > 0:
+def process_data(xd):
+    if xd[0] > 0:
+        print ("Processing Hashes")
         for i in holding_list_hash:
-            # regex
             pass
-
-def process_ip_domain(xd):
-    if (xd[1]) > 0:
+            
+    if xd[1] > 0:
+        print ("Processing IP/URL")
         for i in holding_list_address:
-            # regex
             pass
-
+            
 #############################################################################################
 
 # Finds .xlsx file in directory
@@ -121,16 +120,15 @@ if isExcelEncrypted(file_name) is True:
         excel.load_key(input("{} is encrypted, enter password: " .format(file_name)))
         excel.decrypt(temp)
         file_name = temp
+
         sheet_names = get_sheet_names(file_name)
         holding_list_counts = extract_data(sheet_names)
-        process_hash(holding_list_counts)
-                
+        process_data(holding_list_counts)
 else:
     print ("{} is not encrypted, no password required" .format(file_name))
     sheet_names = get_sheet_names(file_name)
     holding_list_counts = extract_data(sheet_names)
-    print (holding_list_counts)
-    process_hash(holding_list_counts)
+    process_data(holding_list_counts)
 
 
 
