@@ -1,15 +1,12 @@
-import pandas as pd
-import msoffcrypto
 from openpyxl import load_workbook
-import io
-import os
-import re
+import pandas as pd
+import msoffcrypto, io, os, re 
 
 #############################################################################################
 
 # store respective classifed sheet names 
-sheet_name_address = []
 sheet_name_hashes = []
+sheet_name_address = []
 sheet_name_unknown = []
 
 # holding list for extracted data
@@ -22,13 +19,13 @@ hash_sha1 = []
 hash_sha256 =[]
 hash_sha512 = []
 address_ip = []
-address_domain = []
-
-# Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL 
+address_url = []
 
 # Common Sheet Names
 v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
 v2 = ["IP", "DOMAIN", "URL", "Maicious_Domain(s)_IP"]
+
+# Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL 
 
 #############################################################################################
 
@@ -82,15 +79,19 @@ def extract_data(xd):
         print ("No data extracted from Sheet {} " .format(sheet_name_unknown))
     return [holding_list_hash_count, holding_list_address_count]
 
+# classify data from the holding list into various lists (md5, sha1, ip, url etc)
 def process_data(xd):
     if xd[0] > 0:
         print ("Processing Hashes")
         for i in holding_list_hash:
+            # 4 regexs, if no match regex, junk entry
             pass
             
     if xd[1] > 0:
         print ("Processing IP/URL")
         for i in holding_list_address:
+            # remove 'junk' entries that do not have [.]
+            # regex for IP address
             pass
             
 #############################################################################################
