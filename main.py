@@ -5,6 +5,10 @@ import msoffcrypto, io, os, re, csv
 
 #############################################################################################
 
+# Common Sheet Names
+v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
+v2 = ["IP", "Maicious_Domain(s)_IP", "DOMAIN", "URL" , "HOSTNAME"]
+
 # store respective classifed sheet names 
 sheet_name_hashes = []
 sheet_name_address = []
@@ -14,22 +18,6 @@ sheet_name_unknown = []
 holding_list_hash = []
 holding_list_address = []
 holding_list_sheet_known = []
-
-# store verified values for csv generation
-hash_md5 = []
-hash_sha1 = []
-hash_sha256 =[]
-hash_sha512 = []
-hash_unknown = []
-
-address_ip = []
-address_url = []
-address_unknown = []
-
-# Common Sheet Names
-v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
-v2 = ["IP", "Maicious_Domain(s)_IP"]
-v3 = ["DOMAIN", "URL"]
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL 
 output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
@@ -70,7 +58,7 @@ def get_sheet_names(xd):
 
 # extract data from first column of verified sheet names into a holding list
 def extract_data(xd):
-# Todo: detect substrings (if sheetname is SHA1 (v2), need to match SHA1)
+# Todo: detect substrings (if sheetname is  [SHA1 (v2)], need to match SHA1)
     for i in xd:
         if i in v1:
             sheet_name_hashes.append(i)
@@ -113,31 +101,15 @@ def process_data(xd):
     if xd[0] > 0:
         for i in holding_list_hash:
             if re.match(r"\b([a-f\d]{32}|[A-F\d]{32})\b", i):
-                # hash_md5.append(i)
                 output_classified["md5"].append(i)
             elif re.match(r"\b([a-f\d]{40}|[A-F\d]{40})\b", i):
-                # hash_sha1.append(i)
                 output_classified["sha1"].append(i)
             elif re.match(r"\b([a-f\d]{64}|[A-F\d]{64})\b", i):
-                # hash_sha256.append(i)
                 output_classified["sha256"].append(i)
             elif re.match(r"\b([a-f\d]{128}|[A-F\d]{128})\b", i):
-                # hash_sha512.append(i)
                 output_classified["sha512"].append(i)
             else:
-                # hash_unknown.append(i)
                 output_unknown["hash"].append(i)
-            
-        # if len(hash_md5) > 0:
-        #     print ("MD5 ---> " + str(len(hash_md5)))
-        # if len(hash_sha1) > 0:
-        #     print ("SHA1 ---> " + str(len(hash_sha1)))
-        # if len(hash_sha256) > 0:
-        #     print ("SHA256 ---> " + str(len(hash_sha256)))
-        # if len(hash_sha512) > 0:
-        #     print ("SHA512 ---> " + str(len(hash_sha512)))
-        # if len(hash_unknown) > 0:
-        #     print ("Unknown -->" + str(len(hash_unknown)))
 
     if xd[1] > 0:
         # replace any [.] with . in the list
@@ -145,44 +117,50 @@ def process_data(xd):
         for i in clean_holding_list_address:
             # check if any . to remove invalid data like words and headers  
             if "." not in i:
-                # address_unknown.append(i)
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
-                # address_ip.append(i)
                 output_classified["ip"].append(i)
             # most likely a URL if not ipv4 [Needs testing]
             else:
-                # address_url.append(i)
                 output_classified["url"].append(i)
     
     if xd[2] > 0:
         output_unknown["sheet"].extend(holding_list_sheet_known)
 
+    # remove dictionary keys with empty list - ioc types that don't have anything
+    for i in output_classified.copy():
+        if not output_classified[i]:
+            output_classified.pop(i)
 
-    print ("\nClassified Extracted Data: ")
-    for x in output_classified:
-        entry_count = len(output_classified[x])
-        if entry_count > 0:
-            print ("{} --> {}" .format(x, entry_count))
-        # if len(address_ip) > 0:
-        #     print ("IPv4 ---> " + str(len(address_ip)))
-        # if len(address_url) > 0:
-        #     print ("URL ---> " + str(len(address_url)))
-        # if len(address_unknown) > 0:
-        #     print ("Unknown ---> " + str(len(address_unknown)))
-    print ("\nUnknown Data:")
-    for x in output_unknown:
-        entry_count = len(output_unknown[x])
-        if entry_count > 0:
-            print ("{} --> {}" .format(x, entry_count))
+    for i in output_unknown.copy():
+        if not output_unknown[i]:
+            output_unknown.pop(i)
+
+    if len(output_classified) > 0:
+        print ("\nClassified Data: ")
+        for x in output_classified:
+            print ("{} --> {}" .format(x, len(output_classified[x])))
+    else:
+        print ("\nERROR: No extracted data was classified")
+
+    if len(output_unknown) > 0:       
+        print ("\nUnknown Data:")
+        for x in output_unknown:
+            print ("{} --> {}" .format(x, len(output_unknown[x])))
+    else:
+        print ("\nNo Unknown Data")
 
 def csv_generate():
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
-    os.makedirs("auto-ioc-output ({})" .format(dt_string))
-    pass
-    
+    folder_string = "auto-ioc-output ({})" .format(dt_string)
+    os.makedirs(folder_string)
+
+    for x in output_classified:
+        pass
+    for x in output_unknown:
+        pass
 
 #############################################################################################
 
@@ -195,12 +173,12 @@ for file in os.listdir("."):
 
 # If multiple .xslx file found, quit
 if file_count > 1:
-    print ("ERROR: Multiple xlsx files found, only one file can be processed, remove the rest and rerun the script")
+    print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and rerun the script")
     quit()
 
 # If no file found, quit
 if 'file_name' not in globals():
-    print ("ERROR: No xlsx file found")
+    print ("\nERROR: No xlsx file found")
     quit()
 
 # Ask for password if encrypted
