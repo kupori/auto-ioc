@@ -2,3 +2,4 @@ env
 test files
 *.xlsx
 *.code-workspace
+*.csv

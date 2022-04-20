@@ -1,7 +1,12 @@
+from asyncore import write
 from datetime import datetime
+from turtle import title
 from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv
+
+# Todo: 
+# extract_data() -- detect substrings (if sheetname is  [SHA1 (v2)], need to match SHA1)
 
 #############################################################################################
 
@@ -20,10 +25,24 @@ holding_list_address = []
 holding_list_sheet_known = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL 
+hash_types = ["md5", "sha1", "sha256", "sha512"]
 output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
 #############################################################################################
+
+
+# check if file is password protected
+def isExcelEncrypted(xd):
+    try:
+        fileHandle = open(xd, "rb")
+        ofile = msoffcrypto.OfficeFile(fileHandle)
+        isEncrypted = ofile.is_encrypted()
+        fileHandle.close()
+        return isEncrypted
+    except Exception as err:
+        return "Exception: "+ str( format(err) )
+
 
 # validate ipv4 format xxx.xxx.xxx.xxx (each xxx between 0 and 255)
 def validate_ipv4(xd):
@@ -38,16 +57,6 @@ def validate_ipv4(xd):
             return False
     return True
 
-# Checks if file is password protected
-def isExcelEncrypted(xd):
-    try:
-        fileHandle = open(xd, "rb")
-        ofile = msoffcrypto.OfficeFile(fileHandle)
-        isEncrypted = ofile.is_encrypted()
-        fileHandle.close()
-        return isEncrypted
-    except Exception as err:
-        return "Exception: "+ str( format(err) )
 
 # extract sheetnames and save to list
 def get_sheet_names(xd):
@@ -56,9 +65,9 @@ def get_sheet_names(xd):
     print ("\nSheet Names Found ---> {} " .format(sheet_name_list))
     return sheet_name_list
 
+
 # extract data from first column of verified sheet names into a holding list
 def extract_data(xd):
-# Todo: detect substrings (if sheetname is  [SHA1 (v2)], need to match SHA1)
     for i in xd:
         if i in v1:
             sheet_name_hashes.append(i)
@@ -96,6 +105,7 @@ def extract_data(xd):
     
     return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_known_count]
 
+
 # classify data from the holding list into various lists using regex (md5, sha1, ip, url etc)
 def process_data(xd):
     if xd[0] > 0:
@@ -115,14 +125,14 @@ def process_data(xd):
         # replace any [.] with . in the list
         clean_holding_list_address = [w.replace("[.]", ".") for w in holding_list_address]
         for i in clean_holding_list_address:
-            # check if any . to remove invalid data like words and headers  
+            # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
                 output_classified["ip"].append(i)
-            # most likely a URL if not ipv4 [Needs testing]
-            else:
+            # most likely a URL if not ipv4 [Needs testing] <-------------------------------------------------------------------------
+            elif validate_ipv4(i) is False:
                 output_classified["url"].append(i)
     
     if xd[2] > 0:
@@ -141,6 +151,7 @@ def process_data(xd):
         print ("\nClassified Data: ")
         for x in output_classified:
             print ("{} --> {}" .format(x, len(output_classified[x])))
+            # print (output_classified[x])
     else:
         print ("\nERROR: No extracted data was classified")
 
@@ -148,58 +159,93 @@ def process_data(xd):
         print ("\nUnknown Data:")
         for x in output_unknown:
             print ("{} --> {}" .format(x, len(output_unknown[x])))
+            # print (output_unknown[x])
     else:
         print ("\nNo Unknown Data")
 
-def csv_generate():
+    return [len(output_classified), len(output_unknown)]
+
+
+# Create csv files for classified and unknown data
+def csv_generate(xd):
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
     folder_string = "auto-ioc-output ({})" .format(dt_string)
     os.makedirs(folder_string)
+    title_csv = "/auto-ioc-"
 
-    for x in output_classified:
-        pass
-    for x in output_unknown:
-        pass
+    print ("\n")
+
+    if xd[0] > 0:
+    # loop through list of classified ioc types
+        for ioc_type in output_classified:
+            # add header if ioc type is a hash
+            if ioc_type in hash_types:
+                with open (folder_string + title_csv + ioc_type + ".csv", 'w', newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([ioc_type, "File Name"])
+                    for data in output_classified[ioc_type]:
+                        writer.writerow([data])
+                    print ("Generated auto-ioc-" + ioc_type)
+            # if not hash ioc, no header required          
+            else:
+                with open (folder_string + title_csv + ioc_type + ".csv", 'w', newline="") as f:
+                    writer = csv.writer(f)
+                    for data in output_classified[ioc_type]:
+                        writer.writerow([data])
+                    print ("Generated auto-ioc-" + ioc_type)
+
+    if xd[1] > 0:
+        # Create csv for unknown data and dump all entries into it 
+        with open (folder_string + title_csv + "unknown" + ".csv", 'w', newline="") as f:
+                writer = csv.writer(f)
+                for source in output_unknown:
+                    for data in output_unknown[source]:
+                        writer.writerow([data])
+        print ("Generated auto-ioc-unknown")
+
+    print ("\n")   
 
 #############################################################################################
 
-# Finds .xlsx file in directory
-file_count = 0
-for file in os.listdir("."):
-    if file.endswith(".xlsx"):
-        file_name = file
-        file_count += 1
+# Running Code 
+if __name__ == "__main__":
+    # Finds .xlsx file in directory
+    file_count = 0
+    for file in os.listdir("."):
+        if file.endswith(".xlsx"):
+            file_name = file
+            file_count += 1
 
-# If multiple .xslx file found, quit
-if file_count > 1:
-    print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and rerun the script")
-    quit()
+    # If multiple .xslx file found, quit
+    if file_count > 1:
+        print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and rerun the script")
+        quit()
 
-# If no file found, quit
-if 'file_name' not in globals():
-    print ("\nERROR: No xlsx file found")
-    quit()
+    # If no file found, quit
+    if 'file_name' not in globals():
+        print ("\nERROR: No xlsx file found")
+        quit()
 
-# Ask for password if encrypted
-if isExcelEncrypted(file_name) is True:
-    temp = io.BytesIO()
-    with open (file_name, 'rb') as f:
-        excel = msoffcrypto.OfficeFile(f)
-        excel.load_key(input("\n{} is encrypted, enter password: " .format(file_name)))
-        excel.decrypt(temp)
-        file_name = temp
+    # Ask for password if encrypted
+    if isExcelEncrypted(file_name) is True:
+        temp = io.BytesIO()
+        with open (file_name, 'rb') as f:
+            excel = msoffcrypto.OfficeFile(f)
+            excel.load_key(input("\n{} is encrypted, enter password: " .format(file_name)))
+            excel.decrypt(temp)
+            file_name = temp
 
+            sheet_names = get_sheet_names(file_name)
+            holding_list_counts = extract_data(sheet_names)
+            ioc_counts = process_data(holding_list_counts)
+            csv_generate(ioc_counts)
+    else:
+        print ("\n{} is not encrypted, no password required" .format(file_name))
         sheet_names = get_sheet_names(file_name)
         holding_list_counts = extract_data(sheet_names)
-        process_data(holding_list_counts)
-        csv_generate()
-else:
-    print ("\n{} is not encrypted, no password required" .format(file_name))
-    sheet_names = get_sheet_names(file_name)
-    holding_list_counts = extract_data(sheet_names)
-    process_data(holding_list_counts)
-    csv_generate()
+        ioc_counts = process_data(holding_list_counts)
+        csv_generate(ioc_counts)
 
 
 
