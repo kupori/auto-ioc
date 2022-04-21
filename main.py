@@ -1,10 +1,12 @@
 from datetime import datetime
+from numpy import empty
 from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv
 
 # Todo: 
 # extract_data() -- detect substrings (if sheetname is  [SHA1 (v2)], need to match SHA1)
+# remove false positives for URL check - words that have fullstop at like "Domains(s)."
 
 #############################################################################################
 
@@ -16,11 +18,12 @@ v2 = ["IP", "Maicious_Domain(s)_IP", "DOMAIN", "URL" , "HOSTNAME"]
 sheet_name_hashes = []
 sheet_name_address = []
 sheet_name_unknown = []
+empty_sheets_list = []
 
 # holding list for extracted data
 holding_list_hash = []
 holding_list_address = []
-holding_list_sheet_known = []
+holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
 sanitized_words = {"hxxp://":"http://", "hxxps://":"https://" }
@@ -85,37 +88,52 @@ def extract_data(xd):
         if (i not in v1) and (i not in v2):
             sheet_name_unknown.append(i)
     
-    # extract data from identified sheets that have hashes/ips/urls to a holding list
+    # extract data from identified sheets that have hashes/ips/urls to holding lists
     if len(sheet_name_hashes) > 0:
         for x in sheet_name_hashes:
-            df = pd.read_excel(file_name, x)
-            first_column = df.iloc[:, 0].tolist()
-            holding_list_hash.extend(first_column)
+            df = pd.read_excel(file_name, x, header=None)
+            is_empty = df.empty
+            if not is_empty:
+                first_column = df.iloc[:, 0].tolist()
+                holding_list_hash.extend(first_column)
+            else:
+                empty_sheets_list.append(x)
     if len(sheet_name_address) > 0:
         for x in sheet_name_address:
-            df = pd.read_excel(file_name, x)
-            first_column = df.iloc[:, 0].tolist()
-            holding_list_address.extend(first_column)
+            df = pd.read_excel(file_name, x, header=None)
+            is_empty = df.empty
+            if not is_empty:
+                first_column = df.iloc[:, 0].tolist()
+                holding_list_address.extend(first_column)
+            else:
+                empty_sheets_list.append(x)
     # extract data from unknown sheets to a holding list
     if len(sheet_name_unknown) > 0:
         for x in sheet_name_unknown:
-            df = pd.read_excel(file_name, x)
-            first_column = df.iloc[:, 0].tolist()
-            holding_list_sheet_known.extend(first_column)
+            df = pd.read_excel(file_name, x, header=None)
+            is_empty = df.empty
+            if not is_empty:
+                first_column = df.iloc[:, 0].tolist()
+                holding_list_sheet_unknown.extend(first_column)
+            else:
+                empty_sheets_list.append(x)
 
     # get count of each holding list
     holding_list_hash_count = len(holding_list_hash)
     holding_list_address_count = len(holding_list_address)
-    holding_list_sheet_known_count = len(holding_list_sheet_known)
+    holding_list_sheet_unknown_count = len(holding_list_sheet_unknown)
 
     if holding_list_hash_count > 0:
-        print ("Extracted {} potential hashes from Sheet(s) {} " .format(holding_list_hash_count, sheet_name_hashes))
+        print ("Extracted {} potential hashes from {} " .format(holding_list_hash_count, sheet_name_hashes))
     if holding_list_address_count > 0:
-        print ("Extracted {} potential ip/urls from Sheet(s) {} " .format(holding_list_address_count, sheet_name_address))
-    if holding_list_sheet_known_count > 0:
-        print ("Extracted {} data from Unknown Sheet(s) {} " .format(holding_list_sheet_known_count, sheet_name_unknown))
+        print ("Extracted {} potential ip/urls from {} " .format(holding_list_address_count, sheet_name_address))
+    if holding_list_sheet_unknown_count > 0:
+        print ("Extracted {} data from unknown {} " .format(holding_list_sheet_unknown_count, sheet_name_unknown))
+    if len(empty_sheets_list) > 0:
+        print ("No data extracted from {} as it is empty" .format(str(empty_sheets_list)))
+
     # return count of each holding list for next function (process_data)
-    return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_known_count]
+    return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_unknown_count]
 
 
 # classify data from the holding list into various lists using regex (md5, sha1, ip, url etc)
@@ -150,14 +168,14 @@ def process_data(xd):
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
                 output_classified["ip"].append(i)
-            # most likely a URL if not ipv4 [Needs testing] <-------------------------------------------------------------------------
+            # most likely a URL if not ipv4 
             else:
                 unsanitized_i = desanitize_url(i)
                 output_classified["url"].append(unsanitized_i)
 
     # check if holding_list_unknown is not empty
     if xd[2] > 0:
-        output_unknown["sheet"].extend(holding_list_sheet_known)
+        output_unknown["sheet"].extend(holding_list_sheet_unknown)
 
     # remove dictionary keys with empty list - ioc types that don't have anything
     for i in output_classified.copy():
@@ -220,13 +238,17 @@ def csv_generate(xd):
                     print ("Generated auto-ioc-{}.csv" .format(ioc_type))
 
     if xd[1] > 0:
+        print_unknown = []
         # Create csv for unknown data and dump all entries into it 
         with open (folder_string + title_csv + "unknown" + ".csv", 'w', newline="") as f:
                 writer = csv.writer(f)
                 for source in output_unknown:
                     for data in output_unknown[source]:
                         writer.writerow([data])
+                        print_unknown.append(data)
         print ("Generated auto-ioc-unknown.csv")
+
+        print ("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
 
     print ("\n")   
 
@@ -264,11 +286,11 @@ if __name__ == "__main__":
             holding_list_counts = extract_data(sheet_names)
             ioc_counts = process_data(holding_list_counts)
             csv_generate(ioc_counts)
-            print ("auto-ioc process has completed")
+            print ("auto-ioc has completed\n")
     else:
         print ("\n{} is not encrypted, no password required" .format(file_name))
         sheet_names = get_sheet_names(file_name)
         holding_list_counts = extract_data(sheet_names)
         ioc_counts = process_data(holding_list_counts)
         csv_generate(ioc_counts)
-        print ("auto-ioc process has completed")
+        print ("auto-ioc has completed\n")
