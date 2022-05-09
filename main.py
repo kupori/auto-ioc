@@ -25,7 +25,7 @@ holding_list_address = []
 holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
-sanitized_words = {"hxxp://":"http://", "hxxps://":"https://" }
+sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
 hash_types = ["md5", "sha1", "sha256", "sha512"]
 output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
@@ -60,14 +60,14 @@ def validate_ipv4(xd):
             return False
     return True
 
+# if hxxp / hxxps in url, replace. else return original
 def desanitize_url(xd):
     for word in sanitized_words:
         if word in xd:
             new_xd = xd.replace(word, sanitized_words[word])
-            print ("unsanitized {} --> {}" .format(xd, new_xd))
+            print ("{} ---> {}" .format(xd, new_xd))
             return new_xd
-        else:
-            return xd
+    return xd
 
 def sanitize_ports(xd):
     new_xd = []
@@ -76,9 +76,8 @@ def sanitize_ports(xd):
         if len(check) > 0:
             indexes = check[0]
             impt_index = indexes[0]
-            print ("port number detected in {} at index {}" .format(string, str(impt_index)))
             new_string = string[:impt_index]
-            print ("sanitised output: " + new_string)
+            print ("{} ---> {}" .format(string, new_string))
             new_xd.append(new_string)
         else:
             new_xd.append(string)
@@ -210,7 +209,7 @@ def process_data(xd):
     if len(output_classified) > 0:
         print ("\nClassified Data Count: ")
         for x in output_classified:
-            print ("{} --> {}" .format(x, len(output_classified[x])))
+            print ("{} ---> {}" .format(x, len(output_classified[x])))
             # print (output_classified[x])
     else:
         print ("\nERROR: No extracted data was classified")
@@ -219,7 +218,7 @@ def process_data(xd):
     if len(output_unknown) > 0:       
         print ("\nUnknown Data Count:")
         for x in output_unknown:
-            print ("{} --> {}" .format(x, len(output_unknown[x])))
+            print ("{} ---> {}" .format(x, len(output_unknown[x])))
             # print (output_unknown[x])
     else:
         print ("\nNo Unknown Data")
