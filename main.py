@@ -1,5 +1,4 @@
 from datetime import datetime
-from numpy import empty
 from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv
@@ -69,6 +68,23 @@ def desanitize_url(xd):
             return new_xd
         else:
             return xd
+
+def sanitize_ports(xd):
+    new_xd = []
+    for string in xd:
+        check = ([(m.span()) for m in re.finditer(r"\b:[\d]{1,}\b", string)])
+        if len(check) > 0:
+            indexes = check[0]
+            impt_index = indexes[0]
+            print ("port number detected in {} at index {}" .format(string, str(impt_index)))
+            new_string = string[:impt_index]
+            print ("sanitised output: " + new_string)
+            new_xd.append(new_string)
+        else:
+            new_xd.append(string)
+    return new_xd
+
+
 
 # extract sheetnames and save to list
 def get_sheet_names(xd):
@@ -157,11 +173,15 @@ def process_data(xd):
 
     # check if holding_list_address is not empty
     if xd[1] > 0:
+        print ("\n")
         # replace any [.] with . in the list
         clean_holding_list_address = [w.replace("[.]", ".") for w in holding_list_address]
         # remove any whitespaces in the list 
         cleaner_holding_list_address = [w.strip() for w in clean_holding_list_address]
-        for i in cleaner_holding_list_address:
+        # remove any port numbers [xxx:4212] in the list
+        cleanest_holding_list_address = sanitize_ports(clean_holding_list_address)
+
+        for i in cleanest_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
                 output_unknown["ip/url"].append(i)
@@ -226,8 +246,13 @@ def csv_generate(xd):
                 with open (folder_string + title_csv + ioc_type + ".csv", 'w', newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow([ioc_type, "File Name"])
-                    for data in output_classified[ioc_type]:
-                        writer.writerow([data])
+                    if ioc_type in hash_types:
+                        # if creating hash.csv, add, at the end of each entry
+                        for data in output_classified[ioc_type]:
+                            writer.writerow([data] + [","])
+                    else:
+                        for data in output_classified[ioc_type]:
+                            writer.writerow([data])
                     print ("Generated auto-ioc-{}.csv" .format(ioc_type))
             # if not hash ioc, no header required          
             else:
@@ -287,6 +312,7 @@ if __name__ == "__main__":
             ioc_counts = process_data(holding_list_counts)
             csv_generate(ioc_counts)
             print ("auto-ioc has completed\n")
+            input('Press Enter to Exit...')
     else:
         print ("\n{} is not encrypted, no password required" .format(file_name))
         sheet_names = get_sheet_names(file_name)
@@ -294,3 +320,4 @@ if __name__ == "__main__":
         ioc_counts = process_data(holding_list_counts)
         csv_generate(ioc_counts)
         print ("auto-ioc has completed\n")
+        input('Press Enter to Exit...')
