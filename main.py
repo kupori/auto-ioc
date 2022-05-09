@@ -25,6 +25,7 @@ holding_list_address = []
 holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
+false_posi = ""
 sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
 hash_types = ["md5", "sha1", "sha256", "sha512"]
 output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
@@ -42,7 +43,6 @@ def isExcelEncrypted(xd):
         return isEncrypted
     except Exception as err:
         return "Exception: "+ str( format(err) )
-
 
 # validate ipv4 format xxx.xxx.xxx.xxx (each xxx between 0 and 255)
 def validate_ipv4(xd):
@@ -69,6 +69,7 @@ def desanitize_url(xd):
             return new_xd
     return xd
 
+# search for port numbers and remove them
 def sanitize_ports(xd):
     new_xd = []
     for string in xd:
@@ -82,8 +83,6 @@ def sanitize_ports(xd):
         else:
             new_xd.append(string)
     return new_xd
-
-
 
 # extract sheetnames and save to list
 def get_sheet_names(xd):
@@ -150,7 +149,6 @@ def extract_data(xd):
     # return count of each holding list for next function (process_data)
     return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_unknown_count]
 
-
 # classify data from the holding list into various lists using regex (md5, sha1, ip, url etc)
 def process_data(xd):
     # check if holding_list_hash is not empty
@@ -183,6 +181,11 @@ def process_data(xd):
         for i in cleanest_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
+                print("non address/ip ---> [{}] sent to unknown list" .format(i))
+                output_unknown["ip/url"].append(i)
+            # remove false positive edge cases (headers with a .)
+            elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
+                print("non address/ip ---> [{}] sent to unknown list".format(i))
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
@@ -225,7 +228,6 @@ def process_data(xd):
 
     # return count of classified and unknown data for next function (csv_generate)
     return [len(output_classified), len(output_unknown)]
-
 
 # Create csv files for classified and unknown data
 def csv_generate(xd):
