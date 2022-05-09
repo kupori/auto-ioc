@@ -4,8 +4,14 @@ import pandas as pd
 import msoffcrypto, io, os, re, csv
 
 # Todo: 
-# extract_data() -- detect substrings (if sheetname is  [SHA1 (v2)], need to match SHA1)
-# remove false positives for URL check - words that have fullstop at like "Domains(s)."
+# extract_data() -- detect substrings and case-friendly in sheetname
+# add password input via file
+# add quick mode via text file
+# add file name to ouput (duplicate friendly 1 2 3)
+# (done, to test) string-fy lists (url/ip address list) / 
+
+# esm api support 
+# more fields (source, info, cve etc)
 
 #############################################################################################
 
@@ -25,7 +31,6 @@ holding_list_address = []
 holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
-false_posi = ""
 sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
 hash_types = ["md5", "sha1", "sha256", "sha512"]
 output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
@@ -68,6 +73,16 @@ def desanitize_url(xd):
             print ("{} ---> {}" .format(xd, new_xd))
             return new_xd
     return xd
+
+# run multiple 'cleaning' functions
+def clean_list(xd):
+        xd = list(map(str, xd))
+        # replace [.] and [:] 
+        xd1 = [w.replace("[.]", ".") for w in xd]
+        xd2 = [w.replace("[:]", ":") for w in xd1]
+        # remove any whitespaces in the list 
+        xd3 = [w.strip() for w in xd2]
+        return xd3
 
 # search for port numbers and remove them
 def sanitize_ports(xd):
@@ -171,14 +186,10 @@ def process_data(xd):
     # check if holding_list_address is not empty
     if xd[1] > 0:
         print ("\n")
-        # replace any [.] with . in the list
-        clean_holding_list_address = [w.replace("[.]", ".") for w in holding_list_address]
-        # remove any whitespaces in the list 
-        cleaner_holding_list_address = [w.strip() for w in clean_holding_list_address]
-        # remove any port numbers [xxx:4212] in the list
-        cleanest_holding_list_address = sanitize_ports(cleaner_holding_list_address)
+        clean_holding_list_address = clean_list(holding_list_address)
+        clean_holding_list_address = sanitize_ports(clean_holding_list_address)
 
-        for i in cleanest_holding_list_address:
+        for i in clean_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
                 print("non address/ip ---> [{}] sent to unknown list" .format(i))
