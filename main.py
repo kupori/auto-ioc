@@ -242,18 +242,13 @@ def csv_generate(xd):
     if xd[0] > 0:
     # loop through list of classified ioc types
         for ioc_type in output_classified:
-            # add header to csv if ioc type is a hash
+            # add header to csv if ioc type is a hash, also use , as delimiter
             if ioc_type in hash_types:
                 with open (folder_string + title_csv + ioc_type + ".csv", 'w', newline="") as f:
-                    writer = csv.writer(f)
+                    writer = csv.writer(f,  delimiter=",")
                     writer.writerow([ioc_type, "File Name"])
-                    if ioc_type in hash_types:
-                        # if creating hash.csv, add, at the end of each entry
-                        for data in output_classified[ioc_type]:
-                            writer.writerow([data] + [","])
-                    else:
-                        for data in output_classified[ioc_type]:
-                            writer.writerow([data])
+                    for data in output_classified[ioc_type]:
+                        writer.writerow([data] + [""]) # add whitespace to create empty entry in 'filename' column, forcing a , delimiter
                     print ("Generated auto-ioc-{}.csv" .format(ioc_type))
             # if not hash ioc, no header required          
             else:
