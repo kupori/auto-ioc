@@ -179,7 +179,7 @@ def process_data(xd):
         # remove any whitespaces in the list 
         cleaner_holding_list_address = [w.strip() for w in clean_holding_list_address]
         # remove any port numbers [xxx:4212] in the list
-        cleanest_holding_list_address = sanitize_ports(clean_holding_list_address)
+        cleanest_holding_list_address = sanitize_ports(cleaner_holding_list_address)
 
         for i in cleanest_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
