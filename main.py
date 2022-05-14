@@ -66,7 +66,7 @@ def desanitize_url(xd):
     for word in sanitized_words:
         if word in xd:
             new_xd = xd.replace(word, sanitized_words[word])
-            print ("{} ---> {}" .format(xd, new_xd))
+            print ("[desanitize url] {} ---> {}" .format(xd, new_xd))
             return new_xd
     return xd
 
@@ -89,7 +89,7 @@ def sanitize_ports(xd):
             indexes = check[0]
             impt_index = indexes[0]
             new_string = string[:impt_index]
-            print ("{} ---> {}" .format(string, new_string))
+            print ("[sanitize ports] {} ---> {}" .format(string, new_string))
             new_xd.append(new_string)
         else:
             new_xd.append(string)
@@ -188,11 +188,11 @@ def process_data(xd):
         for i in clean_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
-                print("non address/ip ---> [{}] sent to unknown list" .format(i))
+                print("[non address/ip] {} --->sent to unknown list".format(i))
                 output_unknown["ip/url"].append(i)
             # remove false positive edge cases (headers with a .)
             elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
-                print("non address/ip ---> [{}] sent to unknown list".format(i))
+                print("[non address/ip] {} ---> sent to unknown list".format(i))
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
