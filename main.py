@@ -5,10 +5,6 @@ import msoffcrypto, io, os, re, csv
 
 # Todo: 
 # extract_data() -- detect substrings and case-friendly in sheetname
-# add password input via file
-# add quick mode via text file
-# add file name to ouput (duplicate friendly 1 2 3)
-# (done, to test) string-fy lists (url/ip address list) / 
 
 # esm api support 
 # more fields (source, info, cve etc)
@@ -244,7 +240,7 @@ def process_data(xd):
 def csv_generate(xd):
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
-    folder_string = "auto-ioc-output ({})" .format(dt_string)
+    folder_string = "[ouput] {}  ({})" .format(og_file_name, dt_string)
     os.makedirs(folder_string)
     title_csv = "/auto-ioc-"
 
@@ -292,6 +288,7 @@ if __name__ == "__main__":
     file_count = 0
     for file in os.listdir("."):
         if file.endswith(".xlsx"):
+            og_file_name = file
             file_name = file
             file_count += 1
 
@@ -305,26 +302,44 @@ if __name__ == "__main__":
         print ("\nERROR: No xlsx file found")
         quit()
 
-    # Ask for password if encrypted
+    # Require password if encrypted
     if isExcelEncrypted(file_name) is True:
-        temp = io.BytesIO()
-        with open (file_name, 'rb') as f:
-            excel = msoffcrypto.OfficeFile(f)
-            excel.load_key(input("\n{} is encrypted, enter password: " .format(file_name)))
-            excel.decrypt(temp)
-            file_name = temp
+        try:
+            temp = io.BytesIO()
+            with open (file_name, "rb") as f:
+                excel = msoffcrypto.OfficeFile(f)
+                with open ("password.txt", "r") as f:
+                    excel_pw = f.read()
+                    excel_pw = excel_pw.strip()
+                    if excel_pw == "":
+                        excel.load_key(input("\n{} is encrypted, password.text is empty, enter password: " .format(file_name)))
+                        excel.decrypt(temp)
+                        file_name = temp
+                    else:
+                        print ("(\n {} is encrypted, using password from password.txt" .format(og_file_name))                    
+                        excel.load_key(excel_pw)
+                        excel.decrypt(temp)
+                        file_name = temp
 
+                sheet_names = get_sheet_names(file_name)
+                holding_list_counts = extract_data(sheet_names)
+                ioc_counts = process_data(holding_list_counts)
+                csv_generate(ioc_counts)
+                print ("auto-ioc has completed")
+                input('Press Enter to Exit...')
+        except Exception as e:
+            print ("Error ---> {}".format(e))
+            input('Press Enter to Exit...')
+
+    else:
+        try:
+            print ("\n{} is not encrypted, no password required" .format(file_name))
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names)
             ioc_counts = process_data(holding_list_counts)
             csv_generate(ioc_counts)
-            print ("auto-ioc has completed\n")
+            print ("auto-ioc has completed")
             input('Press Enter to Exit...')
-    else:
-        print ("\n{} is not encrypted, no password required" .format(file_name))
-        sheet_names = get_sheet_names(file_name)
-        holding_list_counts = extract_data(sheet_names)
-        ioc_counts = process_data(holding_list_counts)
-        csv_generate(ioc_counts)
-        print ("auto-ioc has completed\n")
-        input('Press Enter to Exit...')
+        except Exception as e:
+            print ("Error ---> {}".format(e))
+            input('Press Enter to Exit...')
