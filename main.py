@@ -13,7 +13,8 @@ import msoffcrypto, io, os, re, csv
 
 # Common Sheet Names
 v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
-v2 = ["IP", "Malicious_Domain(s)_IP", "DOMAIN", "URL" , "HOSTNAME"]
+v2 = ["IP", "Malicious_Domain(s)_IP", "DOMAIN", "URL", "HOSTNAME"]
+
 
 # store classifed sheet names 
 sheet_name_hashes = []
@@ -33,6 +34,9 @@ output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "ur
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
 #############################################################################################
+
+def pull_sheet_names():
+    pass
 
 # check if file is password protected
 def isExcelEncrypted(xd):
@@ -308,15 +312,15 @@ if __name__ == "__main__":
             temp = io.BytesIO()
             with open (file_name, "rb") as f:
                 excel = msoffcrypto.OfficeFile(f)
-                with open ("password.txt", "r") as f:
+                with open ("sheet_pw.txt", "r") as f:
                     excel_pw = f.read()
                     excel_pw = excel_pw.strip()
                     if excel_pw == "":
-                        excel.load_key(input("\n{} is encrypted, password.text is empty, enter password: " .format(file_name)))
+                        excel.load_key(input("\n{} is encrypted,sheet_pw is empty, enter password: " .format(file_name)))
                         excel.decrypt(temp)
                         file_name = temp
                     else:
-                        print ("(\n {} is encrypted, using password from password.txt" .format(og_file_name))                    
+                        print ("(\n {} is encrypted, using password from sheet_pw" .format(og_file_name))                    
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
