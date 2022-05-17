@@ -13,7 +13,7 @@ import msoffcrypto, io, os, re, csv
 
 # Common Sheet Names
 v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
-v2 = ["IP", "Maicious_Domain(s)_IP", "DOMAIN", "URL" , "HOSTNAME"]
+v2 = ["IP", "Malicious_Domain(s)_IP", "DOMAIN", "URL" , "HOSTNAME"]
 
 # store classifed sheet names 
 sheet_name_hashes = []
