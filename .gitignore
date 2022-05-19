@@ -5,3 +5,6 @@ test files
 *.csv
 testing.py
 saved-pw.txt
+*.spec
+build
+dist
