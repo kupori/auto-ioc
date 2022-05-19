@@ -1,20 +1,14 @@
 from datetime import datetime
 from openpyxl import load_workbook
 import pandas as pd
-import msoffcrypto, io, os, re, csv
+import msoffcrypto, io, os, re, csv, shutil
 
 # Todo: 
-# extract_data() -- detect substrings and case-friendly in sheetname
 
 # esm api support 
 # more fields (source, info, cve etc)
 
 #############################################################################################
-
-# Common Sheet Names
-v1 = [ "MD5", "SHA", "SHA1", "SHA256", "SHA512"]
-v2 = ["IP", "Malicious_Domain(s)_IP", "DOMAIN", "URL", "HOSTNAME"]
-
 
 # store classifed sheet names 
 sheet_name_hashes = []
@@ -35,8 +29,16 @@ output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
 #############################################################################################
 
-def pull_sheet_names():
-    pass
+# load list of recognised sheet names from sheet_address.txt and sheet_hash.txt
+def load_sheet_names(xd):
+    try:
+        with open (xd, "r") as f:
+            reader = [w.strip() for w in f.readlines()]
+            print ("Recognised Sheet names {}" .format(str(reader)))
+            return reader
+    except Exception as e:
+        print ("Error ---> {}".format(e))
+        input('Press Enter to Exit...')
 
 # check if file is password protected
 def isExcelEncrypted(xd):
@@ -108,13 +110,13 @@ def get_sheet_names(xd):
 
 
 # extract data from first column of verified sheet names into a holding list
-def extract_data(xd):
+def extract_data(xd, sh_hash, sh_address):
     for i in xd:
-        if i in v1:
-            sheet_name_hashes.append(i)
-        if i in v2:
+        if i.upper() in sh_hash:
+            sheet_name_hashes.append(i) 
+        if i.upper() in sh_address:
             sheet_name_address.append(i)
-        if (i not in v1) and (i not in v2):
+        if (i.upper() not in sh_hash) and (i.upper() not in sh_address):
             sheet_name_unknown.append(i)
     
     # extract data from identified sheets that have hashes/ips/urls to holding lists
@@ -241,12 +243,19 @@ def process_data(xd):
     return [len(output_classified), len(output_unknown)]
 
 # Create csv files for classified and unknown data
-def csv_generate(xd):
+def csv_generate(xd, excel_file, pw):
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
     folder_string = "[ouput] {}  ({})" .format(og_file_name, dt_string)
     os.makedirs(folder_string)
     title_csv = "/auto-ioc-"
+
+    if pw is not None:
+        with open (folder_string + "/pw.txt", 'w') as f:
+            f.write(pw)
+
+    dst_file = folder_string + "/" + excel_file
+    shutil.copy2(excel_file, dst_file)
 
     print ("\n")
 
@@ -288,6 +297,7 @@ def csv_generate(xd):
 
 # Running Code 
 if __name__ == "__main__":
+    print ("\nRunning auto-ioc\n")
     # Finds .xlsx file in directory
     file_count = 0
     for file in os.listdir("."):
@@ -306,17 +316,21 @@ if __name__ == "__main__":
         print ("\nERROR: No xlsx file found")
         quit()
 
+    default_list_hash = load_sheet_names("sheet-names/sheet_hash.txt")
+    default_list_address = load_sheet_names("sheet-names/sheet_address.txt")
+
     # Require password if encrypted
     if isExcelEncrypted(file_name) is True:
         try:
             temp = io.BytesIO()
             with open (file_name, "rb") as f:
                 excel = msoffcrypto.OfficeFile(f)
-                with open ("sheet_pw.txt", "r") as f:
+                with open ("pw.txt", "r") as f:
                     excel_pw = f.read()
                     excel_pw = excel_pw.strip()
                     if excel_pw == "":
-                        excel.load_key(input("\n{} is encrypted,sheet_pw is empty, enter password: " .format(file_name)))
+                        excel_pw = input("\n{} is encrypted,sheet_pw is empty, enter password: " .format(file_name))
+                        excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
                     else:
@@ -326,9 +340,9 @@ if __name__ == "__main__":
                         file_name = temp
 
                 sheet_names = get_sheet_names(file_name)
-                holding_list_counts = extract_data(sheet_names)
+                holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
-                csv_generate(ioc_counts)
+                csv_generate(ioc_counts, og_file_name, excel_pw)
                 print ("auto-ioc has completed")
                 input('Press Enter to Exit...')
         except Exception as e:
@@ -339,9 +353,9 @@ if __name__ == "__main__":
         try:
             print ("\n{} is not encrypted, no password required" .format(file_name))
             sheet_names = get_sheet_names(file_name)
-            holding_list_counts = extract_data(sheet_names)
+            holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
-            csv_generate(ioc_counts)
+            csv_generate(ioc_counts, og_file_name, None)
             print ("auto-ioc has completed")
             input('Press Enter to Exit...')
         except Exception as e:
