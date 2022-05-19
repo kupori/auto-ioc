@@ -3,10 +3,11 @@ from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv, shutil
 
-# Todo: 
-
-# esm api support 
-# more fields (source, info, cve etc)
+"""
+todo:
+esm api support 
+more fields (source, info, cve etc)
+"""
 
 #############################################################################################
 
@@ -194,7 +195,7 @@ def process_data(xd):
         for i in clean_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
-                print("[non address/ip] {} --->sent to unknown list".format(i))
+                print("[non address/ip] {} ---> sent to unknown list".format(i))
                 output_unknown["ip/url"].append(i)
             # remove false positive edge cases (headers with a .)
             elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
@@ -243,19 +244,21 @@ def process_data(xd):
     return [len(output_classified), len(output_unknown)]
 
 # Create csv files for classified and unknown data
-def csv_generate(xd, excel_file, pw):
+def csv_generate(xd, src_file, pw):
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
     folder_string = "[ouput] {}  ({})" .format(og_file_name, dt_string)
     os.makedirs(folder_string)
     title_csv = "/auto-ioc-"
 
+    # if excel file was decrypted with a password, save the password into pw.txt inthe output folder
     if pw is not None:
         with open (folder_string + "/pw.txt", 'w') as f:
             f.write(pw)
 
-    dst_file = folder_string + "/" + excel_file
-    shutil.copy2(excel_file, dst_file)
+    # make a copy of the excel file in the output folder
+    dst_file = folder_string + "/" + src_file
+    shutil.copy2(src_file, dst_file)
 
     print ("\n")
 
@@ -288,7 +291,6 @@ def csv_generate(xd, excel_file, pw):
                         writer.writerow([data])
                         print_unknown.append(data)
         print ("Generated auto-ioc-unknown.csv")
-
         print ("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
 
     print ("\n")   
@@ -308,12 +310,14 @@ if __name__ == "__main__":
 
     # If multiple .xslx file found, quit
     if file_count > 1:
-        print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and rerun the script")
+        print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and try again")
+        input('Press Enter to Exit...')
         quit()
 
     # If no file found, quit
     if 'file_name' not in globals():
         print ("\nERROR: No xlsx file found")
+        input('Press Enter to Exit...')
         quit()
 
     default_list_hash = load_sheet_names("sheet-names/sheet_hash.txt")
