@@ -253,7 +253,7 @@ def csv_generate(xd, src_file, pw):
 
     # if excel file was decrypted with a password, save the password into pw.txt inthe output folder
     if pw is not None:
-        with open (folder_string + "/pw.txt", 'w') as f:
+        with open (folder_string + "/saved-pw.txt", 'w') as f:
             f.write(pw)
 
     # make a copy of the excel file in the output folder
