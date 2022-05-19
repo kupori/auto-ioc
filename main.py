@@ -1,7 +1,7 @@
 from datetime import datetime
 from openpyxl import load_workbook
 import pandas as pd
-import msoffcrypto, io, os, re, csv, shutil
+import msoffcrypto, io, os, re, csv, shutil, sys
 
 """
 todo:
@@ -312,13 +312,13 @@ if __name__ == "__main__":
     if file_count > 1:
         print ("\nERROR: Multiple xlsx files found, only one file can be processed, remove the rest and try again")
         input('Press Enter to Exit...')
-        quit()
+        sys.exit()
 
     # If no file found, quit
     if 'file_name' not in globals():
         print ("\nERROR: No xlsx file found")
         input('Press Enter to Exit...')
-        quit()
+        sys.exit()
 
     default_list_hash = load_sheet_names("sheet-names/sheet_hash.txt")
     default_list_address = load_sheet_names("sheet-names/sheet_address.txt")
