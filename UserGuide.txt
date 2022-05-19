@@ -8,10 +8,14 @@ If the file is encrypted, two options:
     - copy and paste the password into pw.txt OR
     - enter the password into the command line when prompted
 -------------------------------------------------------
+Troubleshooting
+- If legitimate data is being classified as unknown, the sheet name is probably not recognised, refer to steps below to add it in
+- Other errors, let me know
+-------------------------------------------------------
 Adding new Sheet Names
 1. Navigate to sheet-names folder
 2. Open sheet_address /sheet_hash
-3. Add in the new sheet name  (IN ALL CAPITAL LETTERS)
+3. Add the new sheet name in a new line (IN ALL CAPITAL LETTERS)
 4. Save & Close
 -------------------------------------------------------
 
