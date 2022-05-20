@@ -251,15 +251,6 @@ def csv_generate(xd, src_file, pw):
     os.makedirs(folder_string)
     title_csv = "/auto-ioc-"
 
-    # if excel file was decrypted with a password, save the password into pw.txt inthe output folder
-    if pw is not None:
-        with open (folder_string + "/saved-pw.txt", 'w') as f:
-            f.write(pw)
-
-    # make a copy of the excel file in the output folder
-    dst_file = folder_string + "/" + src_file
-    shutil.copy2(src_file, dst_file)
-
     print ("\n")
 
     if xd[0] > 0:
@@ -293,7 +284,22 @@ def csv_generate(xd, src_file, pw):
         print ("Generated auto-ioc-unknown.csv")
         print ("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
 
-    print ("\n")   
+    
+
+    # if excel file was decrypted with a password, save the password into saved-pw.txt in the output folder
+    print ("\npassword saved to saved-pw.txt in output folder, cleaning up...")
+    if pw is not None:
+        with open (folder_string + "/saved-pw.txt", 'w') as f:
+            f.write(pw)
+    # clear contents of pw.txt        
+        with open ("pw.txt", "w") as fa:
+            pass
+
+    # make a copy of the excel file in the output folder
+    dst_file = folder_string + "/" + src_file
+    shutil.copy2(src_file, dst_file)
+
+    print ("auto-ioc has completed")
 
 #############################################################################################
 
@@ -338,7 +344,7 @@ if __name__ == "__main__":
                         excel.decrypt(temp)
                         file_name = temp
                     else:
-                        print ("(\n {} is encrypted, using password from sheet_pw" .format(og_file_name))                    
+                        print ("\n {} is encrypted, using password from sheet_pw" .format(og_file_name))                    
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
@@ -347,7 +353,6 @@ if __name__ == "__main__":
                 holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
                 csv_generate(ioc_counts, og_file_name, excel_pw)
-                print ("auto-ioc has completed")
                 input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
@@ -360,7 +365,6 @@ if __name__ == "__main__":
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
             csv_generate(ioc_counts, og_file_name, None)
-            print ("auto-ioc has completed")
             input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
