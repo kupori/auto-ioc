@@ -24,8 +24,8 @@ holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
 sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
-hash_types = ["md5", "sha1", "sha256", "sha512"]
-output_classified = {"md5":[], "sha1":[], "sha256":[], "sha512":[], "ip":[], "url":[]}
+hash_types = ["MD5", "SHA1", "SHA256", "SHA512"]
+output_classified = {"MD5":[], "SHA1":[], "SHA256":[], "SHA512":[], "IP":[], "URL":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
 #############################################################################################
@@ -176,13 +176,13 @@ def process_data(xd):
         # regex for various hashes
         for potential_hash in clean_holding_list_hash:
             if re.match(r"\b([a-f\d]{32}|[A-F\d]{32})\b", potential_hash):
-                output_classified["md5"].append(potential_hash)
+                output_classified["MD5"].append(potential_hash)
             elif re.match(r"\b([a-f\d]{40}|[A-F\d]{40})\b", potential_hash):
-                output_classified["sha1"].append(potential_hash)
+                output_classified["SHA1"].append(potential_hash)
             elif re.match(r"\b([a-f\d]{64}|[A-F\d]{64})\b", potential_hash):
-                output_classified["sha256"].append(potential_hash)
+                output_classified["SHA256"].append(potential_hash)
             elif re.match(r"\b([a-f\d]{128}|[A-F\d]{128})\b", potential_hash):
-                output_classified["sha512"].append(potential_hash)
+                output_classified["SHA512"].append(potential_hash)
             else:
                 output_unknown["hash"].append(potential_hash)
 
@@ -203,11 +203,11 @@ def process_data(xd):
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
-                output_classified["ip"].append(i)
+                output_classified["IP"].append(i)
             # most likely a URL if not ipv4 
             else:
                 unsanitized_i = desanitize_url(i)
-                output_classified["url"].append(unsanitized_i)
+                output_classified["URL"].append(unsanitized_i)
 
     # check if holding_list_unknown is not empty
     if xd[2] > 0:
@@ -287,8 +287,8 @@ def csv_generate(xd, src_file, pw):
     
 
     # if excel file was decrypted with a password, save the password into saved-pw.txt in the output folder
-    print ("\npassword saved to saved-pw.txt in output folder, cleaning up...")
     if pw is not None:
+        print ("\npassword saved to saved-pw.txt in output folder")
         with open (folder_string + "/saved-pw.txt", 'w') as f:
             f.write(pw)
     # clear contents of pw.txt        
