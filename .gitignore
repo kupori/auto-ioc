@@ -5,6 +5,7 @@ test files
 *.csv
 testing.py
 saved-pw.txt
+esm_c.txt
 *.spec
 build
 dist
