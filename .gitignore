@@ -9,3 +9,4 @@ esm_c.txt
 *.spec
 build
 dist
+Blacklist Resource IDs.txt
