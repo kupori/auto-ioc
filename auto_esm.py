@@ -29,12 +29,13 @@ def login(usr, pw):
 def logout(authToken): 
 	try:	
 		requests.get('https://esm72:8443/www/core-service/rest/LoginService/logout?authToken='+authToken+'&alt=json', verify=False)
-		print ("Logout Successful")
+		print ("\nLogout Successful")
 	except Exception as e:
 		print ("Logout Error ---> {}".format(e))
 
 
-def get_activelist_entries(authToken, resource_id): 
+def get_activelist_entries(authToken, resource_id):
+
 	jsoninput="""{
 	"act.getEntries" : {
 	"act.authToken" : '"""+ authToken +"""',
@@ -46,19 +47,76 @@ def get_activelist_entries(authToken, resource_id):
 	values = r.json()
 	return values['act.getEntriesResponse']['act.return']['entryList']
 
+def add_hash_entries(authToken, resource_id, column_name_list, test_value):
+	
+	jsoninput="""{
+	"act.addEntries" : {
+	"act.authToken" : '""" + authToken + """',
+	"act.resourceId" : '""" + resource_id + """',
+	"act.entryList" :
+			{
+			"columns": """+ str(column_name_list)+""",
+        	"entryList": [
+				{
+				"entry": ['"""+ test_value +"""', '']
+				}
+			]
+			}
+		}
+	} 
+	"""
+	print (jsoninput)
+	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+	requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
+
+def add_url_entries(authToken, resource_id, test_value):
+	
+	jsoninput="""{
+	"act.addEntries" : {
+	"act.authToken" : '""" + authToken + """',
+	"act.resourceId" : '""" + resource_id + """',
+	"act.entryList" :
+        {"entryList": {"entry": ['"""+ test_value +"""']
+					}
+				}
+			}
+	} 
+	"""
+	print (jsoninput)
+	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+	requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
+
 
 if __name__ == "__main__":
+
+	hash_list = ["MD5", "File Name"]
+	hash_value = "testhash1234md5"
+	hash_resource_id = "H7xTtNoEBABCvHWAZJAFnGQ=="
+
+	url_value = "andrewtest.com"
+	url_resource_id = "HF+HwNoEBABCvJKJCmg7g6w=="
+
 	cr = load_creds("esm_c.txt")
-	authToken = login(cr[0], cr[1])
-	if authToken:
+	auth_token = login(cr[0], cr[1])
+	if auth_token:
 		print ("Login Successful")
-		entries = get_activelist_entries(authToken, "xxxx") # saves into a list type containing json format
+		
+		add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
+		hash_entries = get_activelist_entries(auth_token, hash_resource_id) # saves into a list type containing json format
+		print ("\n MD5 ActiveList Entries:\n")
+		for i in hash_entries:
+			print (i)
 
-		for i in range (5):
-			print (entries[i])
 
-		logout(authToken)
-		print ("Script Ended Without Errors")
+		# add_url_entries(auth_token, url_resource_id, url_value)
+		# url_entries = get_activelist_entries(auth_token, url_resource_id)
+		# print ("\n URL ActiveList Entries:\n")
+		# for i in url_entries:
+		# 	print (i)
+		
+
+		logout(auth_token)
+		print ("\nScript Ended Without Errors")
 	else:
 		print ("Script Ended Due to Error")
 		input('Press Enter to Exit...')
