@@ -67,19 +67,26 @@ def add_hash_entries(authToken, resource_id, column_name_list, test_value):
 	"""
 	print (jsoninput)
 	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-	requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
+	r = requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
+	# values = r.json()
+	print (r)
 
-def add_url_entries(authToken, resource_id, test_value):
+def add_url_entries(authToken, resource_id, column_name_list, test_value):
 	
 	jsoninput="""{
 	"act.addEntries" : {
 	"act.authToken" : '""" + authToken + """',
 	"act.resourceId" : '""" + resource_id + """',
 	"act.entryList" :
-        {"entryList": {"entry": ['"""+ test_value +"""']
-					}
+			{
+			"columns": """+ str(column_name_list)+""",
+        	"entryList": [
+				{
+				"entry": ['"""+ test_value +"""', '']
 				}
+			]
 			}
+		}
 	} 
 	"""
 	print (jsoninput)
@@ -90,9 +97,10 @@ def add_url_entries(authToken, resource_id, test_value):
 if __name__ == "__main__":
 
 	hash_list = ["MD5", "File Name"]
-	hash_value = "testhash1234md5"
+	hash_value = "testhashfrompython12345555455555md5"
 	hash_resource_id = "H7xTtNoEBABCvHWAZJAFnGQ=="
 
+	list_column_name = ["AttackerAddress", "TargetAddress","RequestUrl"]
 	url_value = "andrewtest.com"
 	url_resource_id = "HF+HwNoEBABCvJKJCmg7g6w=="
 
@@ -100,8 +108,8 @@ if __name__ == "__main__":
 	auth_token = login(cr[0], cr[1])
 	if auth_token:
 		print ("Login Successful")
-		
-		add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
+		print (auth_token)
+		# add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
 		hash_entries = get_activelist_entries(auth_token, hash_resource_id) # saves into a list type containing json format
 		print ("\n MD5 ActiveList Entries:\n")
 		for i in hash_entries:
@@ -115,7 +123,7 @@ if __name__ == "__main__":
 		# 	print (i)
 		
 
-		logout(auth_token)
+		# logout(auth_token)
 		print ("\nScript Ended Without Errors")
 	else:
 		print ("Script Ended Due to Error")
