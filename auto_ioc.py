@@ -2,6 +2,7 @@ from datetime import datetime
 from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv, shutil, sys
+from auto_esm import * 
 
 """
 todo:
@@ -352,7 +353,11 @@ if __name__ == "__main__":
                 sheet_names = get_sheet_names(file_name)
                 holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
+                # to modify add_entries() with dictionary as input 
+                # insert new code here 
+
                 csv_generate(ioc_counts, og_file_name, excel_pw)
+                
                 input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
@@ -364,7 +369,11 @@ if __name__ == "__main__":
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
+
+            # insert new code here 
+
             csv_generate(ioc_counts, og_file_name, None)
+
             input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
