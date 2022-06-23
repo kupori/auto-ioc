@@ -1,0 +1,20 @@
+https://192.168.123.123:8443/detect-api/#/activelists/addEntries
+
+the # is the resourceID
+
+{
+  "fields": [
+    "string"
+  ],
+  "entries": [
+    {
+      "fields": [
+        "string"
+      ]
+    }
+  ]
+}
+
+headers = {'Authorization': 'xxTOKENxx', 'Content-Type': 'application/json', 'Accept': 'application/json'}
+
+token is the authToken 
