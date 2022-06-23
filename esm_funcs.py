@@ -7,7 +7,7 @@ def load_login_creds(xd):
 	with open (xd, "r") as f:
 		creds = [next(f).strip() for i in range(2)]
 		if len(creds) == 2 and type(creds) is not None:
-			print ("Login via {}" .format(creds[0]))
+			print ("\nLogin via {}" .format(creds[0]))
 			return creds
 		else:
 			print("Error Retrieving Credentials")
