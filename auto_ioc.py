@@ -2,11 +2,12 @@ from datetime import datetime
 from openpyxl import load_workbook
 import pandas as pd
 import msoffcrypto, io, os, re, csv, shutil, sys
-from auto_esm import * 
+from esm_funcs import * 
+# from ioc_funcs import *
+
 
 """
 todo:
-esm api support 
 more fields (source, info, cve etc)
 """
 
@@ -285,8 +286,6 @@ def csv_generate(xd, src_file, pw):
         print ("Generated auto-ioc-unknown.csv")
         print ("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
 
-    
-
     # if excel file was decrypted with a password, save the password into saved-pw.txt in the output folder
     if pw is not None:
         print ("\npassword saved to saved-pw.txt in output folder")
@@ -300,7 +299,21 @@ def csv_generate(xd, src_file, pw):
     dst_file = folder_string + "/" + src_file
     shutil.copy2(src_file, dst_file)
 
-    print ("auto-ioc has completed")
+# prints out processed iocs for user to review, if all is good, function will return normally and next step is adding into esm
+def ioc_review(xd):
+    user_continue = input("\nBefore the IOCs are added to ESM, press enter to review them ")
+
+    for x in xd:
+        print ("\n{} Entries to be added \n" .format(x))
+        for y in xd[x]:
+            print (y)
+        user_continue = input('\nDo the entries look valid? press enter if yes: ')
+        if user_continue == "":
+            pass
+        else:
+            print ("Entries maybe invalid, cancelling the script")
+            input('Press Enter to Exit...')
+            sys.exit()
 
 #############################################################################################
 
@@ -327,8 +340,8 @@ if __name__ == "__main__":
         input('Press Enter to Exit...')
         sys.exit()
 
-    default_list_hash = load_sheet_names("sheet-names/sheet_hash.txt")
-    default_list_address = load_sheet_names("sheet-names/sheet_address.txt")
+    default_list_hash = load_sheet_names("dependancies/sheet_hash.txt")
+    default_list_address = load_sheet_names("dependancies/sheet_address.txt")
 
     # Require password if encrypted
     if isExcelEncrypted(file_name) is True:
@@ -353,11 +366,12 @@ if __name__ == "__main__":
                 sheet_names = get_sheet_names(file_name)
                 holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
-                # to modify add_entries() with dictionary as input 
-                # insert new code here 
-
                 csv_generate(ioc_counts, og_file_name, excel_pw)
-                
+
+
+
+
+                print("auto-ioc has completed")
                 input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
@@ -369,11 +383,19 @@ if __name__ == "__main__":
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
+            # csv_generate(ioc_counts, og_file_name, None)
+            
+            ioc_review(output_classified)
 
-            # insert new code here 
+            """
+            ESM API Code
+            """
+            # list_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
+            # login_creds = load_login_creds("dependancies/esm_credentials.txt")
 
-            csv_generate(ioc_counts, og_file_name, None)
-
+            
+            # auth_token = login(cr[0], cr[1])
+            print("auto-ioc has completed")
             input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))

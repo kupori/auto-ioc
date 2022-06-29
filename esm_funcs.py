@@ -3,15 +3,28 @@ import os, requests, urllib3, sys, json
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
 
-def load_creds(xd): 
+def load_login_creds(xd): 
 	with open (xd, "r") as f:
 		creds = [next(f).strip() for i in range(2)]
 		if len(creds) == 2 and type(creds) is not None:
-			print ("Login via {}" .format(creds[0]))
+			print ("\nLogin via {}" .format(creds[0]))
 			return creds
 		else:
 			print("Error Retrieving Credentials")
 			sys.exit()
+
+def load_resource_ids(xd):
+	with open (xd, "r") as f:
+		index = 0
+		dict_output = {}
+		data = f.read()
+		to_list = data.split("\n")
+		to_list = [x.strip() for x in to_list]
+		for i in to_list:
+			if index % 2 == 0:
+				dict_output[i] = to_list[index+1]
+			index += 1
+		return (dict_output)
 
 def login(usr, pw): 
 	try:
@@ -94,37 +107,37 @@ def add_url_entries(authToken, resource_id, column_name_list, test_value):
 	requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-	hash_list = ["MD5", "File Name"]
-	hash_value = "testhashfrompython12345555455555md5"
-	hash_resource_id = "H7xTtNoEBABCvHWAZJAFnGQ=="
+# 	hash_list = ["MD5", "File Name"]
+# 	hash_value = "testhashfrompython12345555455555md5"
+# 	hash_resource_id = "H7xTtNoEBABCvHWAZJAFnGQ=="
 
-	list_column_name = ["AttackerAddress", "TargetAddress","RequestUrl"]
-	url_value = "andrewtest.com"
-	url_resource_id = "HF+HwNoEBABCvJKJCmg7g6w=="
+# 	list_column_name = ["AttackerAddress", "TargetAddress","RequestUrl"]
+# 	url_value = "andrewtest.com"
+# 	url_resource_id = "HF+HwNoEBABCvJKJCmg7g6w=="
 
-	cr = load_creds("esm_c.txt")
-	auth_token = login(cr[0], cr[1])
-	if auth_token:
-		print ("Login Successful")
-		print (auth_token)
-		# add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
-		hash_entries = get_activelist_entries(auth_token, hash_resource_id) # saves into a list type containing json format
-		print ("\n MD5 ActiveList Entries:\n")
-		for i in hash_entries:
-			print (i)
+# 	cr = load_login_creds("esm_c.txt")
+# 	auth_token = login(cr[0], cr[1])
+# 	if auth_token:
+# 		print ("Login Successful")
+# 		print (auth_token)
+# 		# add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
+# 		hash_entries = get_activelist_entries(auth_token, hash_resource_id) # saves into a list type containing json format
+# 		print ("\n MD5 ActiveList Entries:\n")
+# 		for i in hash_entries:
+# 			print (i)
 
 
-		# add_url_entries(auth_token, url_resource_id, url_value)
-		# url_entries = get_activelist_entries(auth_token, url_resource_id)
-		# print ("\n URL ActiveList Entries:\n")
-		# for i in url_entries:
-		# 	print (i)
+# 		# add_url_entries(auth_token, url_resource_id, url_value)
+# 		# url_entries = get_activelist_entries(auth_token, url_resource_id)
+# 		# print ("\n URL ActiveList Entries:\n")
+# 		# for i in url_entries:
+# 		# 	print (i)
 		
 
-		# logout(auth_token)
-		print ("\nScript Ended Without Errors")
-	else:
-		print ("Script Ended Due to Error")
-		input('Press Enter to Exit...')
+# 		# logout(auth_token)
+# 		print ("\nScript Ended Without Errors")
+# 	else:
+# 		print ("Script Ended Due to Error")
+# 		input('Press Enter to Exit...')

@@ -10,3 +10,7 @@ esm_c.txt
 build
 dist
 Blacklist Resource IDs.txt
+*.pyc
+dependancies/esm_credentials.txt
+dependancies/esm_hostnames.txt
+dependancies/esm_resource_ids.txt
