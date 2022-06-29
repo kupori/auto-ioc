@@ -1,9 +1,14 @@
 from datetime import datetime
 from openpyxl import load_workbook
 import pandas as pd
-import msoffcrypto, io, os, re, csv, shutil, sys
-from esm_funcs import * 
-# from ioc_funcs import *
+import msoffcrypto
+import io
+import os
+import re
+import csv
+import shutil
+import sys
+# from esm_funcs import * 
 
 
 """
@@ -25,7 +30,6 @@ holding_list_address = []
 holding_list_sheet_unknown = []
 
 # Blacklist Output- MD5, SHA1, SHA256, SHA512, Attacker IP, Target IP, URL
-sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
 hash_types = ["MD5", "SHA1", "SHA256", "SHA512"]
 output_classified = {"MD5":[], "SHA1":[], "SHA256":[], "SHA512":[], "IP":[], "URL":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
@@ -71,12 +75,31 @@ def validate_ipv4(xd):
     return True
 
 # if hxxp / hxxps in url, replace. else return original
+# additional desantise for urls with brackets like [http], [.com], [http://]
 def desanitize_url(xd):
+    old_xd = xd
+    count = 0
+    to_sanitize = {}
+    sanitized_words = {"hxxp://":"http://", "hxxps://":"https://"}
+    bracket_regex = re.compile(r"\[[a-zA-Z0-9\:\/\.\_\\]{1,}\]")
+    matches = bracket_regex.findall(xd)
+    
+    for i in matches:
+        to_sanitize[i]=i[1:-1]
+
+    for word in to_sanitize:
+        if word in xd:
+            xd = xd.replace(word, to_sanitize[word])
+            count += 1
+
     for word in sanitized_words:
         if word in xd:
-            new_xd = xd.replace(word, sanitized_words[word])
-            print ("[desanitize url] {} ---> {}" .format(xd, new_xd))
-            return new_xd
+            xd = xd.replace(word, sanitized_words[word])
+            count += 1
+
+    if count > 0:
+        print ("[DESANITIZE URL] --- {} ---> {}" .format(old_xd, xd))
+        return xd
     return xd
 
 # run multiple 'cleaning' functions
@@ -98,7 +121,7 @@ def sanitize_ports(xd):
             indexes = check[0]
             impt_index = indexes[0]
             new_string = string[:impt_index]
-            print ("[sanitize ports] {} ---> {}" .format(string, new_string))
+            print ("[SANITIZE PORTS] --- {} ---> {}" .format(string, new_string))
             new_xd.append(new_string)
         else:
             new_xd.append(string)
@@ -197,11 +220,11 @@ def process_data(xd):
         for i in clean_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
-                print("[non address/ip] {} ---> sent to unknown list".format(i))
+                print("[NON ADDRESS/IP] --- {} ---> sent to list of unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # remove false positive edge cases (headers with a .)
             elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
-                print("[non address/ip] {} ---> sent to unknown list".format(i))
+                print("[NON ADDRESS/IP] --- {} ---> sent to list of unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
@@ -301,7 +324,7 @@ def csv_generate(xd, src_file, pw):
 
 # prints out processed iocs for user to review, if all is good, function will return normally and next step is adding into esm
 def ioc_review(xd):
-    user_continue = input("\nBefore the IOCs are added to ESM, press enter to review them ")
+    user_continue = input("\nPress Enter to review IOCs")
 
     for x in xd:
         print ("\n{} Entries to be added \n" .format(x))
@@ -368,9 +391,17 @@ if __name__ == "__main__":
                 ioc_counts = process_data(holding_list_counts)
                 csv_generate(ioc_counts, og_file_name, excel_pw)
 
+                ioc_review(output_classified)
 
+                """
+                ESM API Code
+                """
+                # list_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
+                # login_creds = load_login_creds("dependancies/esm_credentials.txt")
 
-
+                
+                # auth_token = login(cr[0], cr[1])
+ 
                 print("auto-ioc has completed")
                 input('Press Enter to Exit...')
         except Exception as e:
@@ -383,7 +414,7 @@ if __name__ == "__main__":
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
-            # csv_generate(ioc_counts, og_file_name, None)
+            csv_generate(ioc_counts, og_file_name, None)
             
             ioc_review(output_classified)
 
