@@ -8,7 +8,7 @@ import re
 import csv
 import shutil
 import sys
-# from esm_funcs import * 
+from esm_funcs import * 
 
 
 """
@@ -41,7 +41,7 @@ def load_sheet_names(xd):
     try:
         with open (xd, "r") as f:
             reader = [w.strip() for w in f.readlines()]
-            print ("Recognised Sheet names {}" .format(str(reader)))
+            print ("Recognised Sheet Names {}" .format(str(reader)))
             return reader
     except Exception as e:
         print ("Error ---> {}".format(e))
@@ -181,13 +181,13 @@ def extract_data(xd, sh_hash, sh_address):
     holding_list_sheet_unknown_count = len(holding_list_sheet_unknown)
 
     if holding_list_hash_count > 0:
-        print ("Extracted {} potential hashes from {} " .format(holding_list_hash_count, sheet_name_hashes))
+        print ("Extracted {} Hashes from {} " .format(holding_list_hash_count, sheet_name_hashes))
     if holding_list_address_count > 0:
-        print ("Extracted {} potential ip/urls from {} " .format(holding_list_address_count, sheet_name_address))
+        print ("Extracted {} IP/URLs from {} " .format(holding_list_address_count, sheet_name_address))
     if holding_list_sheet_unknown_count > 0:
-        print ("Extracted {} data from unknown {} " .format(holding_list_sheet_unknown_count, sheet_name_unknown))
+        print ("Extracted {} Data from Unrecognised Sheets {} " .format(holding_list_sheet_unknown_count, sheet_name_unknown))
     if len(empty_sheets_list) > 0:
-        print ("No data extracted from {} as it is empty" .format(str(empty_sheets_list)))
+        print ("Sheet {} is Empty, No Data Extracted" .format(str(empty_sheets_list)))
 
     # return count of each holding list for next function (process_data)
     return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_unknown_count]
@@ -220,11 +220,11 @@ def process_data(xd):
         for i in clean_holding_list_address:
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
-                print("[NON ADDRESS/IP] --- {} ---> sent to list of unknowns".format(i))
+                print("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # remove false positive edge cases (headers with a .)
             elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
-                print("[NON ADDRESS/IP] --- {} ---> sent to list of unknowns".format(i))
+                print("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
@@ -254,7 +254,7 @@ def process_data(xd):
             print ("{} ---> {}" .format(x, len(output_classified[x])))
             # print (output_classified[x])
     else:
-        print ("\nERROR: No extracted data was classified")
+        print ("\nERROR: Failed to Classify Data")
 
     # print summary of unknown data
     if len(output_unknown) > 0:       
@@ -324,19 +324,32 @@ def csv_generate(xd, src_file, pw):
 
 # prints out processed iocs for user to review, if all is good, function will return normally and next step is adding into esm
 def ioc_review(xd):
-    user_continue = input("\nPress Enter to review IOCs")
+    user_continue = input("\nPress Enter to Review IOCs")
 
     for x in xd:
         print ("\n{} Entries to be added \n" .format(x))
         for y in xd[x]:
             print (y)
-        user_continue = input('\nDo the entries look valid? press enter if yes: ')
+        user_continue = input('\nDo The Entries Look Valid? Enter if Yes: ')
         if user_continue == "":
             pass
         else:
             print ("Entries maybe invalid, cancelling the script")
             input('Press Enter to Exit...')
             sys.exit()
+    print ('IOC Review Complete')
+
+def json_format_ioc_hash(xd):
+    entries = """"""
+    for i in xd:
+        entries += """\n["entry":['""" + i + """', ''],"""
+    return entries
+
+def json_format_ioc_address(xd):
+    entries = """"""
+    for i in xd:
+        entries += """\n["entry":['""" + i + """'],"""
+    return entries
 
 #############################################################################################
 
@@ -376,12 +389,12 @@ if __name__ == "__main__":
                     excel_pw = f.read()
                     excel_pw = excel_pw.strip()
                     if excel_pw == "":
-                        excel_pw = input("\n{} is encrypted,sheet_pw is empty, enter password: " .format(file_name))
+                        excel_pw = input("\n{} is encrypted, pw.txt is empty, enter password: " .format(file_name))
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
                     else:
-                        print ("\n {} is encrypted, using password from sheet_pw" .format(og_file_name))                    
+                        print ("\n {} is encrypted, using password from pw.txt" .format(og_file_name))                    
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
@@ -389,45 +402,72 @@ if __name__ == "__main__":
                 sheet_names = get_sheet_names(file_name)
                 holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
-                csv_generate(ioc_counts, og_file_name, excel_pw)
+                # csv_generate(ioc_counts, og_file_name, excel_pw)
 
                 ioc_review(output_classified)
 
                 """
                 ESM API Code
                 """
-                # list_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
-                # login_creds = load_login_creds("dependancies/esm_credentials.txt")
 
+                input('auto-ioc has Ended, Press Enter to Exit...')
                 
-                # auth_token = login(cr[0], cr[1])
- 
-                print("auto-ioc has completed")
-                input('Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
             input('Press Enter to Exit...')
 
     else:
         try:
-            print ("\n{} is not encrypted, no password required" .format(file_name))
+            print ("\n{} is Not Encrypted" .format(file_name))
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
-            csv_generate(ioc_counts, og_file_name, None)
+            # csv_generate(ioc_counts, og_file_name, None)
             
             ioc_review(output_classified)
 
             """
             ESM API Code
             """
-            # list_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
-            # login_creds = load_login_creds("dependancies/esm_credentials.txt")
+            input('\nPress Enter to start ESM Import...')
 
+            esm_creds = load_esm_creds("dependancies/esm_credentials.txt")
+            esm_hostnames = load_esm_hostnames("dependancies/esm_hostnames.txt")
+            esm_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
+            esm_resource_ids["IP"] = esm_resource_ids["IP"].split(",")
+
+            for esm_name in esm_hostnames:
+                print ("Login to {} with user {}".format(esm_name, esm_creds[0]) )
+                # esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
+                esm_auth_token = "1234+=="
+                if esm_auth_token:
+                    print ("Login Successful --- {}" .format(esm_auth_token))
+                    
+                    for ioc_type in output_classified:
+
+                        if ioc_type in hash_types:
+                            json_ioc_entries_hash = json_format_ioc_hash(output_classified[ioc_type])
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], ioc_type, json_ioc_entries_hash)
+                             # get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
+                            pass
+
+                        elif ioc_type == "URL":
+                            json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_hash)
+
+                            pass
+
+                        elif ioc_type == "IP":
+                            json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_hash)
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_hash)
+
+                            pass
+                # logout(esm_name, esm_auth_token)
+                input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))    
             
-            # auth_token = login(cr[0], cr[1])
-            print("auto-ioc has completed")
-            input('Press Enter to Exit...')
+            print ("\nESM Import has Completed\n")
+            input('auto-ioc has Ended, Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
             input('Press Enter to Exit...')

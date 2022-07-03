@@ -1,13 +1,15 @@
-import os, requests, urllib3, sys, json
+import requests
+import urllib3
+import sys
+# import json
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
 
-def load_login_creds(xd): 
+def load_esm_creds(xd): 
 	with open (xd, "r") as f:
 		creds = [next(f).strip() for i in range(2)]
 		if len(creds) == 2 and type(creds) is not None:
-			print ("\nLogin via {}" .format(creds[0]))
 			return creds
 		else:
 			print("Error Retrieving Credentials")
@@ -26,10 +28,20 @@ def load_resource_ids(xd):
 			index += 1
 		return (dict_output)
 
-def login(usr, pw): 
+def load_esm_hostnames(xd):
+    with open(xd, "r") as f:
+        data = f.read()
+        to_list = data.split("\n")
+        to_list = [x.strip() for x in to_list]
+        return to_list
+
+
+
+
+def get_auth_token(usr, pw, esm): 
 	try:
-		login_link = "https://esm72:8443/www/core-service/rest/LoginService/login?login={}&password={}&alt=json" .format(usr, pw)
-		r = requests.get(login_link, verify=False)
+		url = "https://{}:8443/www/core-service/rest/LoginService/login?login={}&password={}&alt=json" .format(esm, usr, pw)
+		r = requests.get(url, verify=False)
 		values = r.json()
 		authToken = values['log.loginResponse']['log.return']
 		return authToken
@@ -39,15 +51,34 @@ def login(usr, pw):
 		else: 
 			print ("Login Error ---> {}".format(e))
 
-def logout(authToken): 
-	try:	
-		requests.get('https://esm72:8443/www/core-service/rest/LoginService/logout?authToken='+authToken+'&alt=json', verify=False)
-		print ("\nLogout Successful")
-	except Exception as e:
-		print ("Logout Error ---> {}".format(e))
+
+def add_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entries):
+	
+	jsoninput="""{
+	"act.addEntries" : {
+	"act.authToken" : '""" + authToken + """',
+	"act.resourceId" : '""" + resource_id + """',
+	"act.entryList" :
+			{
+			"columns": '""" + column_name_list + """',
+        	"entryList": [
+				{
+				""" + ioc_entries + """
+				}
+			]
+			}
+		}
+	} 
+	"""
+	print (jsoninput)
+	# headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+	# url = "https://{}:8443/www/manager-service/rest/ActiveListService/addEntries" .format(esm_hostname)
+	# r = requests.post(url,verify=False, data=jsoninput, headers=headers)
+	# # values = r.json()
+	# print (r)
 
 
-def get_activelist_entries(authToken, resource_id):
+def get_activelist_entries(esm_hostname, authToken, resource_id):
 
 	jsoninput="""{
 	"act.getEntries" : {
@@ -56,88 +87,16 @@ def get_activelist_entries(authToken, resource_id):
 	}
 	}"""
 	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-	r = requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/getEntries', verify=False, data=jsoninput, headers=headers)
+	url = "https://{}:8443/www/manager-service/rest/ActiveListService/getEntries" .format(esm_hostname)
+	r = requests.post(url, verify=False, data=jsoninput, headers=headers)
 	values = r.json()
 	return values['act.getEntriesResponse']['act.return']['entryList']
 
-def add_hash_entries(authToken, resource_id, column_name_list, test_value):
-	
-	jsoninput="""{
-	"act.addEntries" : {
-	"act.authToken" : '""" + authToken + """',
-	"act.resourceId" : '""" + resource_id + """',
-	"act.entryList" :
-			{
-			"columns": """+ str(column_name_list)+""",
-        	"entryList": [
-				{
-				"entry": ['"""+ test_value +"""', '']
-				}
-			]
-			}
-		}
-	} 
-	"""
-	print (jsoninput)
-	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-	r = requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
-	# values = r.json()
-	print (r)
 
-def add_url_entries(authToken, resource_id, column_name_list, test_value):
-	
-	jsoninput="""{
-	"act.addEntries" : {
-	"act.authToken" : '""" + authToken + """',
-	"act.resourceId" : '""" + resource_id + """',
-	"act.entryList" :
-			{
-			"columns": """+ str(column_name_list)+""",
-        	"entryList": [
-				{
-				"entry": ['"""+ test_value +"""', '']
-				}
-			]
-			}
-		}
-	} 
-	"""
-	print (jsoninput)
-	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-	requests.post('https://esm72:8443/www/manager-service/rest/ActiveListService/addEntries', verify=False, data=jsoninput, headers=headers)
-
-
-# if __name__ == "__main__":
-
-# 	hash_list = ["MD5", "File Name"]
-# 	hash_value = "testhashfrompython12345555455555md5"
-# 	hash_resource_id = "H7xTtNoEBABCvHWAZJAFnGQ=="
-
-# 	list_column_name = ["AttackerAddress", "TargetAddress","RequestUrl"]
-# 	url_value = "andrewtest.com"
-# 	url_resource_id = "HF+HwNoEBABCvJKJCmg7g6w=="
-
-# 	cr = load_login_creds("esm_c.txt")
-# 	auth_token = login(cr[0], cr[1])
-# 	if auth_token:
-# 		print ("Login Successful")
-# 		print (auth_token)
-# 		# add_hash_entries(auth_token, hash_resource_id, hash_list, hash_value)
-# 		hash_entries = get_activelist_entries(auth_token, hash_resource_id) # saves into a list type containing json format
-# 		print ("\n MD5 ActiveList Entries:\n")
-# 		for i in hash_entries:
-# 			print (i)
-
-
-# 		# add_url_entries(auth_token, url_resource_id, url_value)
-# 		# url_entries = get_activelist_entries(auth_token, url_resource_id)
-# 		# print ("\n URL ActiveList Entries:\n")
-# 		# for i in url_entries:
-# 		# 	print (i)
-		
-
-# 		# logout(auth_token)
-# 		print ("\nScript Ended Without Errors")
-# 	else:
-# 		print ("Script Ended Due to Error")
-# 		input('Press Enter to Exit...')
+def logout(esm_hostname, authToken): 
+	try:
+		url = "https://{}:8443/www/core-service/rest/LoginService/logout?authToken={}&alt=json" .format(esm_hostname, authToken)
+		requests.get(url, verify=False)
+		print ("\nLogout Successful")
+	except Exception as e:
+		print ("Logout Error ---> {}".format(e))
