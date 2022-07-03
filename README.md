@@ -1,14 +1,9 @@
 # auto-ioc
 
-takes in a xlsx files containing IOCs (url/ip/hashes) and churns out comma delimited csv(s) for each unique ioc type
-
-**issues:**
-
-* nil (to test for bugs)
+1. takes in a xlsx files containing IOCs (url/ip/hashes) and churns out comma delimited csv(s) for each unique ioc type
+2. automatically import IOCs to ESM(s) via API calls 
 
 **long term todo:**
-
-* esm api support
 * more fields (source, campaign name, cve etc)
 
 ---
@@ -38,7 +33,7 @@ Troubleshooting
 
 Adding new Sheet Names
 
-1. Navigate to sheet-names folder
+1. Navigate to dependancies folder
 2. Open sheet_address /sheet_hash
 3. Add the new sheet name in a new line (IN ALL CAPITAL LETTERS)
 4. Save & Close
