@@ -34,6 +34,7 @@ hash_types = ["MD5", "SHA1", "SHA256", "SHA512"]
 output_classified = {"MD5":[], "SHA1":[], "SHA256":[], "SHA512":[], "IP":[], "URL":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
+
 #############################################################################################
 
 # load list of recognised sheet names from sheet_address.txt and sheet_hash.txt
@@ -330,7 +331,7 @@ def ioc_review(xd):
         print ("\n{} Entries to be added \n" .format(x))
         for y in xd[x]:
             print (y)
-        user_continue = input('\nDo The Entries Look Valid? Enter if Yes: ')
+        user_continue = input('\nDo The Entries Look Valid? Press Enter if Yes, Press Any Other Key and Enter if No: ')
         if user_continue == "":
             pass
         else:
@@ -339,17 +340,51 @@ def ioc_review(xd):
             sys.exit()
     print ('IOC Review Complete')
 
+# wrap json over IOC entries for esm api request
 def json_format_ioc_hash(xd):
     entries = """"""
     for i in xd:
-        entries += """\n["entry":['""" + i + """', ''],"""
+        entries += """\n{"entry":['""" + i + """', '']},"""
     return entries
 
+# wrap json over IOC entries for esm api request
 def json_format_ioc_address(xd):
     entries = """"""
     for i in xd:
-        entries += """\n["entry":['""" + i + """'],"""
+        entries += """\n{"entry":['""" + i + """']},"""
     return entries
+
+# convert list of single dics (that esm returns in getActiveList) into list 
+def flatten_address(xd):
+    new_xd = []
+    for i in xd:
+        for j in i:
+            new_xd.append(i[j])
+    return new_xd
+
+# convert list of single dics (that esm returns in getActiveList) into list 
+def flatten_hashes(xd):
+    new_xd = []
+    for i in xd:
+        for j in i:
+            new_xd.append(i[j][0])
+    return new_xd
+
+# check if ioc entries were added to esm (compare against results from getActivelist)
+def verify_ioc_added(verify_ioc, entry_list, ioc_type):
+    failed_to_add = []
+    add_count = 0
+    full_count = len(verify_ioc)
+    for i in verify_ioc:
+        if i in entry_list:
+            add_count += 1
+        else:
+            failed_to_add.append(i)
+    if add_count == full_count:
+        print ("Successfully Added {} IOCs to {} ActiveList" .format(full_count, ioc_type))
+    else:
+        print (" {} / {} IOCs were Added to {}" .format(add_count, full_count, ioc_type))
+        print ("Failed to Add ---> {}" .format(str(failed_to_add)))
 
 #############################################################################################
 
@@ -379,6 +414,11 @@ if __name__ == "__main__":
     default_list_hash = load_sheet_names("dependancies/sheet_hash.txt")
     default_list_address = load_sheet_names("dependancies/sheet_address.txt")
 
+    esm_creds = load_esm_creds("dependancies/esm_credentials.txt")
+    esm_hostnames = load_esm_hostnames("dependancies/esm_hostnames.txt")
+    esm_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
+    esm_resource_ids["IP"] = esm_resource_ids["IP"].split(",")
+
     # Require password if encrypted
     if isExcelEncrypted(file_name) is True:
         try:
@@ -406,9 +446,52 @@ if __name__ == "__main__":
 
                 ioc_review(output_classified)
 
-                """
-                ESM API Code
-                """
+            """
+            ESM API Code
+            """
+            input('\nPress Enter to start ESM Import...')
+            
+            for esm_name in esm_hostnames:
+                print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
+                esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
+                if esm_auth_token:
+                    print ("Login Successful --- {}" .format(esm_auth_token))
+                    
+                    for ioc_type in output_classified:
+
+                        if ioc_type in hash_types:
+                            json_ioc_entries_hash = json_format_ioc_hash(output_classified[ioc_type])
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], ioc_type, json_ioc_entries_hash)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
+                            entry_full_list_clean = flatten_hashes(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+
+                        elif ioc_type == "URL":
+                            json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+                            
+                        elif ioc_type == "IP":
+                            json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
+
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+                
+                logout(esm_name, esm_auth_token)
+                input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
 
                 input('auto-ioc has Ended, Press Enter to Exit...')
                 
@@ -422,8 +505,7 @@ if __name__ == "__main__":
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
-            # csv_generate(ioc_counts, og_file_name, None)
-            
+            csv_generate(ioc_counts, og_file_name, None)
             ioc_review(output_classified)
 
             """
@@ -431,15 +513,9 @@ if __name__ == "__main__":
             """
             input('\nPress Enter to start ESM Import...')
 
-            esm_creds = load_esm_creds("dependancies/esm_credentials.txt")
-            esm_hostnames = load_esm_hostnames("dependancies/esm_hostnames.txt")
-            esm_resource_ids = load_resource_ids("dependancies/esm_resource_ids.txt")
-            esm_resource_ids["IP"] = esm_resource_ids["IP"].split(",")
-
             for esm_name in esm_hostnames:
-                print ("Login to {} with user {}".format(esm_name, esm_creds[0]) )
-                # esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
-                esm_auth_token = "1234+=="
+                print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
+                esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
                 if esm_auth_token:
                     print ("Login Successful --- {}" .format(esm_auth_token))
                     
@@ -448,22 +524,35 @@ if __name__ == "__main__":
                         if ioc_type in hash_types:
                             json_ioc_entries_hash = json_format_ioc_hash(output_classified[ioc_type])
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], ioc_type, json_ioc_entries_hash)
-                             # get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
-                            pass
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
+                            entry_full_list_clean = flatten_hashes(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
 
                         elif ioc_type == "URL":
                             json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
-                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_hash)
-
-                            pass
-
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+                            
                         elif ioc_type == "IP":
                             json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
-                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_hash)
-                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_hash)
 
-                            pass
-                # logout(esm_name, esm_auth_token)
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+
+                            add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_address)
+                            entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1])
+                            entry_full_list_clean = flatten_address(entry_full_list)
+                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
+                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
+                
+                logout(esm_name, esm_auth_token)
                 input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))    
             
             print ("\nESM Import has Completed\n")

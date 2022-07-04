@@ -1,7 +1,6 @@
 import requests
 import urllib3
 import sys
-# import json
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
@@ -35,9 +34,6 @@ def load_esm_hostnames(xd):
         to_list = [x.strip() for x in to_list]
         return to_list
 
-
-
-
 def get_auth_token(usr, pw, esm): 
 	try:
 		url = "https://{}:8443/www/core-service/rest/LoginService/login?login={}&password={}&alt=json" .format(esm, usr, pw)
@@ -60,23 +56,41 @@ def add_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entr
 	"act.resourceId" : '""" + resource_id + """',
 	"act.entryList" :
 			{
-			"columns": '""" + column_name_list + """',
+			"columns": ['""" + column_name_list + """'],
         	"entryList": [
-				{
 				""" + ioc_entries + """
-				}
 			]
 			}
 		}
 	} 
 	"""
-	print (jsoninput)
-	# headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-	# url = "https://{}:8443/www/manager-service/rest/ActiveListService/addEntries" .format(esm_hostname)
-	# r = requests.post(url,verify=False, data=jsoninput, headers=headers)
-	# # values = r.json()
-	# print (r)
+	# print (jsoninput)
+	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+	url = "https://{}:8443/www/manager-service/rest/ActiveListService/addEntries" .format(esm_hostname)
+	r = requests.post(url,verify=False, data=jsoninput, headers=headers)
+	print ("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
 
+def delete_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entries):
+	
+	jsoninput="""{
+	"act.deleteEntries" : {
+	"act.authToken" : '""" + authToken + """',
+	"act.resourceId" : '""" + resource_id + """',
+	"act.entryList" :
+			{
+			"columns": ['""" + column_name_list + """'],
+        	"entryList": [
+				""" + ioc_entries + """
+			]
+			}
+		}
+	} 
+	"""
+	# print (jsoninput)
+	headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+	url = "https://{}:8443/www/manager-service/rest/ActiveListService/deleteEntries" .format(esm_hostname)
+	r = requests.post(url,verify=False, data=jsoninput, headers=headers)
+	print ("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
 
 def get_activelist_entries(esm_hostname, authToken, resource_id):
 
@@ -97,6 +111,6 @@ def logout(esm_hostname, authToken):
 	try:
 		url = "https://{}:8443/www/core-service/rest/LoginService/logout?authToken={}&alt=json" .format(esm_hostname, authToken)
 		requests.get(url, verify=False)
-		print ("\nLogout Successful")
+		print ("Logout of {}" .format(esm_hostname))
 	except Exception as e:
 		print ("Logout Error ---> {}".format(e))
