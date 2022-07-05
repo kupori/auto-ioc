@@ -493,8 +493,8 @@ if __name__ == "__main__":
                 logout(esm_name, esm_auth_token)
                 input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
 
-                input('auto-ioc has Ended, Press Enter to Exit...')
-                
+            print ("\nESM Import has Completed\n")
+            input('auto-ioc has Ended, Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
             input('Press Enter to Exit...')
