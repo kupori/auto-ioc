@@ -340,6 +340,15 @@ def ioc_review(xd):
             sys.exit()
     print ('IOC Review Complete')
 
+def start_esm_import():
+    user_continue = input('\nTo start ESM Import Press Enter, Press Any Other Key and Enter to Cancel: ')
+    if user_continue == "":
+        return 0
+    else:
+        print ("ESM Import Cancelled")
+        input('Press Enter to Exit...')
+        sys.exit()
+    
 # wrap json over IOC entries for esm api request
 def json_format_ioc_hash(xd):
     entries = """"""
@@ -448,9 +457,8 @@ if __name__ == "__main__":
             """
             ESM API Code
             """
-            
-            input('\nPress Enter to start ESM Import...')
-            
+            start_esm_import()
+
             for esm_name in esm_hostnames:
                 print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
                 esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
@@ -511,7 +519,7 @@ if __name__ == "__main__":
             """
             ESM API Code
             """
-            input('\nPress Enter to start ESM Import...')
+            start_esm_import()
 
             for esm_name in esm_hostnames:
                 print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
