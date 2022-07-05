@@ -442,13 +442,13 @@ if __name__ == "__main__":
                 sheet_names = get_sheet_names(file_name)
                 holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
                 ioc_counts = process_data(holding_list_counts)
-                # csv_generate(ioc_counts, og_file_name, excel_pw)
-
+                csv_generate(ioc_counts, og_file_name, excel_pw)
                 ioc_review(output_classified)
 
             """
             ESM API Code
             """
+            
             input('\nPress Enter to start ESM Import...')
             
             for esm_name in esm_hostnames:
