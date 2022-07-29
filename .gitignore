@@ -14,3 +14,4 @@ Blacklist Resource IDs.txt
 dependancies/esm_credentials.txt
 dependancies/esm_hostnames.txt
 dependancies/esm_resource_ids.txt
+*.log

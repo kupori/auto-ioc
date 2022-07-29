@@ -1,6 +1,7 @@
 import requests
 import urllib3
 import sys
+import logging
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings(urllib3.exceptions.SubjectAltNameWarning)
@@ -11,7 +12,8 @@ def load_esm_creds(xd):
 		if len(creds) == 2 and type(creds) is not None:
 			return creds
 		else:
-			print("Error Retrieving Credentials")
+			print ("Error Retrieving ESM Credentials from file")
+			logging.info("Error Retrieving ESM Credentials from file")
 			sys.exit()
 
 def load_resource_ids(xd):
@@ -44,8 +46,10 @@ def get_auth_token(usr, pw, esm):
 	except Exception as e:
 		if str(e)  == "Expecting value: line 1 column 2 (char 1)":
 			print ("Login Error ---> Invalid usr/pw")
+			logging.info("Login Error ---> Invalid usr/pw")
 		else: 
 			print ("Login Error ---> {}".format(e))
+			logging.info(("Login Error ---> {}".format(e)))
 
 
 def add_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entries):
@@ -69,6 +73,7 @@ def add_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entr
 	url = "https://{}:8443/www/manager-service/rest/ActiveListService/addEntries" .format(esm_hostname)
 	r = requests.post(url,verify=False, data=jsoninput, headers=headers)
 	print ("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
+	logging.info("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
 
 def delete_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_entries):
 	
@@ -91,6 +96,7 @@ def delete_entries(esm_hostname, authToken, resource_id, column_name_list, ioc_e
 	url = "https://{}:8443/www/manager-service/rest/ActiveListService/deleteEntries" .format(esm_hostname)
 	r = requests.post(url,verify=False, data=jsoninput, headers=headers)
 	print ("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
+	logging.info("{} - {} ---> {}" .format(esm_hostname, column_name_list, r))
 
 def get_activelist_entries(esm_hostname, authToken, resource_id):
 
@@ -112,5 +118,7 @@ def logout(esm_hostname, authToken):
 		url = "https://{}:8443/www/core-service/rest/LoginService/logout?authToken={}&alt=json" .format(esm_hostname, authToken)
 		requests.get(url, verify=False)
 		print ("Logout of {}" .format(esm_hostname))
+		logging.info("Logout of {}" .format(esm_hostname))
 	except Exception as e:
 		print ("Logout Error ---> {}".format(e))
+		logging.info("Logout Error ---> {}".format(e))

@@ -9,14 +9,17 @@ import csv
 import shutil
 import sys
 from esm_funcs import * 
-
-
-"""
-todo:
-more fields (source, info, cve etc)
-"""
+import logging
 
 #############################################################################################
+
+# logging config
+
+os.makedirs('logs', exist_ok=True)
+dtnow_log = datetime.now()
+dt_string_log = dtnow_log.strftime("%d-%m-%Y, %H%M%S")
+log_file_name = "logs/[{}] logs.log" .format(dt_string_log)
+logging.basicConfig(level=logging.INFO, filename=log_file_name, filemode='w', format='%(message)s')
 
 # store classifed sheet names 
 sheet_name_hashes = []
@@ -34,7 +37,6 @@ hash_types = ["MD5", "SHA1", "SHA256", "SHA512"]
 output_classified = {"MD5":[], "SHA1":[], "SHA256":[], "SHA512":[], "IP":[], "URL":[]}
 output_unknown = {"hash":[], "ip/url":[], "sheet":[]}
 
-
 #############################################################################################
 
 # load list of recognised sheet names from sheet_address.txt and sheet_hash.txt
@@ -43,9 +45,11 @@ def load_sheet_names(xd):
         with open (xd, "r") as f:
             reader = [w.strip() for w in f.readlines()]
             print ("Recognised Sheet Names {}" .format(str(reader)))
+            logging.info("Recognised Sheet Names {}" .format(str(reader)))
             return reader
     except Exception as e:
         print ("Error ---> {}".format(e))
+        logging.error("Error ---> {}".format(e))
         input('Press Enter to Exit...')
 
 # check if file is password protected
@@ -100,6 +104,7 @@ def desanitize_url(xd):
 
     if count > 0:
         print ("[DESANITIZE URL] --- {} ---> {}" .format(old_xd, xd))
+        logging.info("[DESANITIZE URL] --- {} ---> {}" .format(old_xd, xd))
         return xd
     return xd
 
@@ -123,6 +128,7 @@ def sanitize_ports(xd):
             impt_index = indexes[0]
             new_string = string[:impt_index]
             print ("[SANITIZE PORTS] --- {} ---> {}" .format(string, new_string))
+            logging.info(("[SANITIZE PORTS] --- {} ---> {}" .format(string, new_string)))
             new_xd.append(new_string)
         else:
             new_xd.append(string)
@@ -133,6 +139,7 @@ def get_sheet_names(xd):
     wb2 = load_workbook(xd)
     sheet_name_list = wb2.sheetnames
     print ("\nSheet Names Found ---> {} " .format(sheet_name_list))
+    logging.info("\nSheet Names Found ---> {} " .format(sheet_name_list))
     return sheet_name_list
 
 
@@ -183,12 +190,16 @@ def extract_data(xd, sh_hash, sh_address):
 
     if holding_list_hash_count > 0:
         print ("Extracted {} Hashes from {} " .format(holding_list_hash_count, sheet_name_hashes))
+        logging.info("Extracted {} Hashes from {} " .format(holding_list_hash_count, sheet_name_hashes))
     if holding_list_address_count > 0:
         print ("Extracted {} IP/URLs from {} " .format(holding_list_address_count, sheet_name_address))
+        logging.info("Extracted {} IP/URLs from {} " .format(holding_list_address_count, sheet_name_address))
     if holding_list_sheet_unknown_count > 0:
         print ("Extracted {} Data from Unrecognised Sheets {} " .format(holding_list_sheet_unknown_count, sheet_name_unknown))
+        logging.info("Extracted {} Data from Unrecognised Sheets {} " .format(holding_list_sheet_unknown_count, sheet_name_unknown))
     if len(empty_sheets_list) > 0:
         print ("Sheet {} is Empty, No Data Extracted" .format(str(empty_sheets_list)))
+        logging.info("Sheet {} is Empty, No Data Extracted" .format(str(empty_sheets_list)))
 
     # return count of each holding list for next function (process_data)
     return [holding_list_hash_count, holding_list_address_count, holding_list_sheet_unknown_count]
@@ -222,10 +233,12 @@ def process_data(xd):
             # only add entries with . inside to remove invalid data like words and headers  
             if "." not in i:
                 print("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
+                logging.info("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # remove false positive edge cases (headers with a .)
             elif re.match(r"\B\.[a-zA-Z0-9]{1,}|[. a-zA-Z0-9]{1,}\.\B", i):
                 print("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
+                logging.info("[NON ADDRESS/IP] --- {} ---> Sent to List of Unknowns".format(i))
                 output_unknown["ip/url"].append(i)
             # run ipv4 validate function
             elif validate_ipv4(i) is True:
@@ -251,20 +264,25 @@ def process_data(xd):
     # print summary of classified data
     if len(output_classified) > 0:
         print ("\nClassified Data Count: ")
+        logging.info("\nClassified Data Count: ")
         for x in output_classified:
             print ("{} ---> {}" .format(x, len(output_classified[x])))
-            # print (output_classified[x])
+            logging.info("{} ---> {}" .format(x, len(output_classified[x])))
     else:
         print ("\nERROR: Failed to Classify Data")
+        logging.info("\nERROR: Failed to Classify Data")
 
     # print summary of unknown data
     if len(output_unknown) > 0:       
         print ("\nUnknown Data Count:")
+        logging.info("\nUnknown Data Count:")
         for x in output_unknown:
             print ("{} ---> {}" .format(x, len(output_unknown[x])))
+            logging.info("{} ---> {}" .format(x, len(output_unknown[x])))
             # print (output_unknown[x])
     else:
         print ("\nNo Unknown Data")
+        logging.info("\nNo Unknown Data")
 
     # return count of classified and unknown data for next function (csv_generate)
     return [len(output_classified), len(output_unknown)]
@@ -273,7 +291,7 @@ def process_data(xd):
 def csv_generate(xd, src_file, pw):
     dtnow = datetime.now()
     dt_string = dtnow.strftime("%d-%m-%Y, %H%M%S")
-    folder_string = "[ouput] {}  ({})" .format(og_file_name, dt_string)
+    folder_string = '[ouput] {} ({})' .format(og_file_name, dt_string)
     os.makedirs(folder_string)
     title_csv = "/auto-ioc-"
 
@@ -290,6 +308,7 @@ def csv_generate(xd, src_file, pw):
                     for data in output_classified[ioc_type]:
                         writer.writerow([data] + [""]) # add whitespace to create empty entry in 'filename' column, forcing a , delimiter
                     print ("Generated auto-ioc-{}.csv" .format(ioc_type))
+                    logging.info("Generated auto-ioc-{}.csv" .format(ioc_type))
             # if not hash ioc, no header required          
             else:
                 with open (folder_string + title_csv + ioc_type + ".csv", 'w', newline="") as f:
@@ -297,6 +316,7 @@ def csv_generate(xd, src_file, pw):
                     for data in output_classified[ioc_type]:
                         writer.writerow([data])
                     print ("Generated auto-ioc-{}.csv" .format(ioc_type))
+                    logging.info("Generated auto-ioc-{}.csv" .format(ioc_type))
 
     if xd[1] > 0:
         print_unknown = []
@@ -308,11 +328,14 @@ def csv_generate(xd, src_file, pw):
                         writer.writerow([data])
                         print_unknown.append(data)
         print ("Generated auto-ioc-unknown.csv")
+        logging.info("Generated auto-ioc-unknown.csv")
         print ("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
+        logging.info("auto-ioc-unknown.csv contains {}" .format(str(print_unknown)))
 
     # if excel file was decrypted with a password, save the password into saved-pw.txt in the output folder
     if pw is not None:
         print ("\npassword saved to saved-pw.txt in output folder")
+        logging.info("\npassword saved to saved-pw.txt in output folder")
         with open (folder_string + "/saved-pw.txt", 'w') as f:
             f.write(pw)
     # clear contents of pw.txt        
@@ -326,26 +349,34 @@ def csv_generate(xd, src_file, pw):
 # prints out processed iocs for user to review, if all is good, function will return normally and next step is adding into esm
 def ioc_review(xd):
     user_continue = input("\nPress Enter to Review IOCs")
+    logging.info("\nPress Enter to Review IOCs")
 
     for x in xd:
         print ("\n{} Entries to be added \n" .format(x))
+        logging.info("\n{} Entries to be added \n" .format(x))
         for y in xd[x]:
             print (y)
+            logging.info(y)
         user_continue = input('\nDo The Entries Look Valid? Press Enter if Yes, Press Any Other Key and Enter if No: ')
+        logging.info('\nDo The Entries Look Valid? Press Enter if Yes, Press Any Other Key and Enter if No: ')
         if user_continue == "":
             pass
         else:
             print ("Entries maybe invalid, cancelling the script")
+            logging.info("Entries maybe invalid, cancelling the script")
             input('Press Enter to Exit...')
             sys.exit()
     print ('IOC Review Complete')
+    logging.info('IOC Review Complete')
 
 def start_esm_import():
-    user_continue = input('\nTo start ESM Import Press Enter, Press Any Other Key and Enter to Cancel: ')
+    user_continue = input('\nTo start ESM Import Press Enter, Press Any Other Key Followed By Enter To Cancel: ')
+    logging.info('\nTo start ESM Import Press Enter, Press Any Other Key Followed By Enter To Cancel: ')
     if user_continue == "":
         return 0
     else:
         print ("ESM Import Cancelled")
+        logging.info("ESM Import Cancelled")
         input('Press Enter to Exit...')
         sys.exit()
     
@@ -400,6 +431,7 @@ def verify_ioc_added(verify_ioc, entry_list, ioc_type):
 # Running Code 
 if __name__ == "__main__":
     print ("\nRunning auto-ioc\n")
+    logging.info("Running auto-ioc\n")
     # Finds .xlsx file in directory
     file_count = 0
     for file in os.listdir("."):
@@ -439,11 +471,13 @@ if __name__ == "__main__":
                     excel_pw = excel_pw.strip()
                     if excel_pw == "":
                         excel_pw = input("\n{} is encrypted, pw.txt is empty, enter password: " .format(file_name))
+                        logging.info("\n{} is encrypted, pw.txt is empty, enter password: " .format(file_name))
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
                     else:
-                        print ("\n {} is encrypted, using password from pw.txt" .format(og_file_name))                    
+                        print ("\n {} is encrypted, using password from pw.txt" .format(og_file_name))
+                        logging.info("\n {} is encrypted, using password from pw.txt" .format(og_file_name))                    
                         excel.load_key(excel_pw)
                         excel.decrypt(temp)
                         file_name = temp
@@ -453,17 +487,19 @@ if __name__ == "__main__":
                 ioc_counts = process_data(holding_list_counts)
                 csv_generate(ioc_counts, og_file_name, excel_pw)
                 ioc_review(output_classified)
-
+            
             """
             ESM API Code
             """
             start_esm_import()
 
             for esm_name in esm_hostnames:
-                print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
+                print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]))
+                logging.info("\nLogin to {} with user {}".format(esm_name, esm_creds[0]))
                 esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
                 if esm_auth_token:
-                    print ("Login Successful --- {}" .format(esm_auth_token))
+                    print ("Login Successful")
+                    logging.info(("Login Successful"))
                     
                     for ioc_type in output_classified:
 
@@ -480,8 +516,6 @@ if __name__ == "__main__":
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
                             
                         elif ioc_type == "IP":
                             json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
@@ -489,27 +523,31 @@ if __name__ == "__main__":
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
 
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
-                
-                logout(esm_name, esm_auth_token)
-                input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
+
+                    logout(esm_name, esm_auth_token)
+                    input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
+                    logging.info("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
+                else:
+                    input("\nImport to {} Failed, Press Enter to Continue" .format(esm_name))
+                    logging.info("\nImport to {} Failed, Press Enter to Continue" .format(esm_name))
 
             print ("\nESM Import has Completed\n")
+            logging.info("\nESM Import has Completed\n")
             input('auto-ioc has Ended, Press Enter to Exit...')
+            logging.info('auto-ioc has Ended, Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
+            logging.info("Error ---> {}".format(e))
             input('Press Enter to Exit...')
 
     else:
         try:
             print ("\n{} is Not Encrypted" .format(file_name))
+            logging.info("\n{} is Not Encrypted" .format(file_name))
             sheet_names = get_sheet_names(file_name)
             holding_list_counts = extract_data(sheet_names, default_list_hash, default_list_address)
             ioc_counts = process_data(holding_list_counts)
@@ -523,9 +561,11 @@ if __name__ == "__main__":
 
             for esm_name in esm_hostnames:
                 print ("\nLogin to {} with user {}".format(esm_name, esm_creds[0]) )
+                logging.info("\nLogin to {} with user {}".format(esm_name, esm_creds[0]))
                 esm_auth_token = get_auth_token(esm_creds[0], esm_creds[1], esm_name)
                 if esm_auth_token:
-                    print ("Login Successful --- {}" .format(esm_auth_token))
+                    print ("Login Successful")
+                    logging.info(("Login Successful"))
                     
                     for ioc_type in output_classified:
 
@@ -534,16 +574,12 @@ if __name__ == "__main__":
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], ioc_type, json_ioc_entries_hash)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
                             entry_full_list_clean = flatten_hashes(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
 
                         elif ioc_type == "URL":
                             json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type], "RequestUrl", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
                             
                         elif ioc_type == "IP":
                             json_ioc_entries_address = json_format_ioc_address(output_classified[ioc_type])
@@ -551,20 +587,23 @@ if __name__ == "__main__":
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0], "AttackerAddress", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][0])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
 
                             add_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1], "TargetAddress", json_ioc_entries_address)
                             entry_full_list = get_activelist_entries(esm_name, esm_auth_token, esm_resource_ids[ioc_type][1])
                             entry_full_list_clean = flatten_address(entry_full_list)
-                            # print ("total entry count = {}" .format(len(entry_full_list_clean)))
-                            # verify_ioc_added(output_classified[ioc_type], entry_full_list_clean, ioc_type)
                 
-                logout(esm_name, esm_auth_token)
-                input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))    
-            
+                    logout(esm_name, esm_auth_token)
+                    input("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))
+                    logging.info("\nImport to {} Complete, Press Enter to Continue" .format(esm_name))    
+                else:
+                    input("\nImport to {} Failed, Press Enter to Continue" .format(esm_name))
+                    logging.info("\nImport to {} Failed, Press Enter to Continue" .format(esm_name))
+
             print ("\nESM Import has Completed\n")
+            logging.info("\nESM Import has Completed\n")
             input('auto-ioc has Ended, Press Enter to Exit...')
+            logging.info('auto-ioc has Ended, Press Enter to Exit...')
         except Exception as e:
             print ("Error ---> {}".format(e))
+            logging.info("Error ---> {}".format(e))
             input('Press Enter to Exit...')
